@@ -11556,6 +11556,10 @@ function($, undefined) {
 // === End Rails ===
 
 // === jQueryUI Effects ===
+/*! jQuery UI - v1.12.1 - 2018-05-16
+* http://jqueryui.com
+* Includes: effect.js, effects/effect-blind.js, effects/effect-bounce.js, effects/effect-clip.js, effects/effect-drop.js, effects/effect-explode.js, effects/effect-fade.js, effects/effect-fold.js, effects/effect-highlight.js, effects/effect-puff.js, effects/effect-pulsate.js, effects/effect-scale.js, effects/effect-shake.js, effects/effect-size.js, effects/effect-slide.js, effects/effect-transfer.js
+* Copyright jQuery Foundation and other contributors; Licensed MIT */
 function( factory ) {
 	if ( typeof define === "function" && define.amd ) {
 
@@ -11614,990 +11618,1589 @@ function( factory ) {
    *
    * Date: Wed Jan 16 08:47:09 2013 -0600
    */
-    function( jQuery, undefined ) {
-      function clamp( value, prop, allowEmpty ) {
-      	var type = propTypes[ prop.type ] || {};
+  ( function( jQuery, undefined ) {
 
-      	if ( value == null ) {
-      		return ( allowEmpty || !prop.def ) ? null : prop.def;
-      	}
+   	var stepHooks = "backgroundColor borderBottomColor borderLeftColor borderRightColor " +
+   		"borderTopColor color columnRuleColor outlineColor textDecorationColor textEmphasisColor",
 
-      	// ~~ is an short way of doing floor for positive numbers
-      	value = type.floor ? ~~value : parseFloat( value );
+   	// Plusequals test for += 100 -= 100
+   	rplusequals = /^([\-+])=\s*(\d+\.?\d*)/,
 
-      	// IE will pass in empty strings as value for alpha,
-      	// which will hit this case
-      	if ( isNaN( value ) ) {
-      		return prop.def;
-      	}
+   	// A set of RE's that can match strings and generate color tuples.
+   	stringParsers = [ {
+   			re: /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
+   			parse: function( execResult ) {
+   				return [
+   					execResult[ 1 ],
+   					execResult[ 2 ],
+   					execResult[ 3 ],
+   					execResult[ 4 ]
+   				];
+   			}
+   		}, {
+   			re: /rgba?\(\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
+   			parse: function( execResult ) {
+   				return [
+   					execResult[ 1 ] * 2.55,
+   					execResult[ 2 ] * 2.55,
+   					execResult[ 3 ] * 2.55,
+   					execResult[ 4 ]
+   				];
+   			}
+   		}, {
 
-      	if ( type.mod ) {
+   			// This regex ignores A-F because it's compared against an already lowercased string
+   			re: /#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})/,
+   			parse: function( execResult ) {
+   				return [
+   					parseInt( execResult[ 1 ], 16 ),
+   					parseInt( execResult[ 2 ], 16 ),
+   					parseInt( execResult[ 3 ], 16 )
+   				];
+   			}
+   		}, {
 
-      		// We add mod before modding to make sure that negatives values
-      		// get converted properly: -10 -> 350
-      		return ( value + type.mod ) % type.mod;
-      	}
+   			// This regex ignores A-F because it's compared against an already lowercased string
+   			re: /#([a-f0-9])([a-f0-9])([a-f0-9])/,
+   			parse: function( execResult ) {
+   				return [
+   					parseInt( execResult[ 1 ] + execResult[ 1 ], 16 ),
+   					parseInt( execResult[ 2 ] + execResult[ 2 ], 16 ),
+   					parseInt( execResult[ 3 ] + execResult[ 3 ], 16 )
+   				];
+   			}
+   		}, {
+   			re: /hsla?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
+   			space: "hsla",
+   			parse: function( execResult ) {
+   				return [
+   					execResult[ 1 ],
+   					execResult[ 2 ] / 100,
+   					execResult[ 3 ] / 100,
+   					execResult[ 4 ]
+   				];
+   			}
+   		} ],
 
-      	// For now all property types without mod have min and max
-      	return 0 > value ? 0 : type.max < value ? type.max : value;
-      }
+   	// JQuery.Color( )
+   	color = jQuery.Color = function( color, green, blue, alpha ) {
+   		return new jQuery.Color.fn.parse( color, green, blue, alpha );
+   	},
+   	spaces = {
+   		rgba: {
+   			props: {
+   				red: {
+   					idx: 0,
+   					type: "byte"
+   				},
+   				green: {
+   					idx: 1,
+   					type: "byte"
+   				},
+   				blue: {
+   					idx: 2,
+   					type: "byte"
+   				}
+   			}
+   		},
 
-      function stringParse( string ) {
-      	var inst = color(),
-      		rgba = inst._rgba = [];
+   		hsla: {
+   			props: {
+   				hue: {
+   					idx: 0,
+   					type: "degrees"
+   				},
+   				saturation: {
+   					idx: 1,
+   					type: "percent"
+   				},
+   				lightness: {
+   					idx: 2,
+   					type: "percent"
+   				}
+   			}
+   		}
+   	},
+   	propTypes = {
+   		"byte": {
+   			floor: true,
+   			max: 255
+   		},
+   		"percent": {
+   			max: 1
+   		},
+   		"degrees": {
+   			mod: 360,
+   			floor: true
+   		}
+   	},
+   	support = color.support = {},
 
-      	string = string.toLowerCase();
+   	// Element for support tests
+   	supportElem = jQuery( "<p>" )[ 0 ],
 
-      	each( stringParsers, function( i, parser ) {
-      		var parsed,
-      			match = parser.re.exec( string ),
-      			values = match && parser.parse( match ),
-      			spaceName = parser.space || "rgba";
+   	// Colors = jQuery.Color.names
+   	colors,
 
-      		if ( values ) {
-      			parsed = inst[ spaceName ]( values );
+   	// Local aliases of functions called often
+   	each = jQuery.each;
 
-      			// If this was an rgba parse the assignment might happen twice
-      			// oh well....
-      			inst[ spaces[ spaceName ].cache ] = parsed[ spaces[ spaceName ].cache ];
-      			rgba = inst._rgba = parsed._rgba;
+   	// Determine rgba support immediately
+   	supportElem.style.cssText = "background-color:rgba(1,1,1,.5)";
+   	support.rgba = supportElem.style.backgroundColor.indexOf( "rgba" ) > -1;
 
-      			// Exit each( stringParsers ) here because we matched
-      			return false;
-      		}
-      	} );
+   	// Define cache name and alpha properties
+   	// for rgba and hsla spaces
+   	each( spaces, function( spaceName, space ) {
+   		space.cache = "_" + spaceName;
+   		space.props.alpha = {
+   			idx: 3,
+   			type: "percent",
+   			def: 1
+   		};
+   	} );
 
-      	// Found a stringParser that handled it
-      	if ( rgba.length ) {
+   	function clamp( value, prop, allowEmpty ) {
+   		var type = propTypes[ prop.type ] || {};
 
-      		// If this came from a parsed string, force "transparent" when alpha is 0
-      		// chrome, (and maybe others) return "transparent" as rgba(0,0,0,0)
-      		if ( rgba.join() === "0,0,0,0" ) {
-      			jQuery.extend( rgba, colors.transparent );
-      		}
-      		return inst;
-      	}
+   		if ( value == null ) {
+   			return ( allowEmpty || !prop.def ) ? null : prop.def;
+   		}
 
-      	// Named colors
-      	return colors[ string ];
-      }
+   		// ~~ is an short way of doing floor for positive numbers
+   		value = type.floor ? ~~value : parseFloat( value );
 
-      // Hsla conversions adapted from:
-      // https://code.google.com/p/maashaack/source/browse/packages/graphics/trunk/src/graphics/colors/HUE2RGB.as?r=5021
+   		// IE will pass in empty strings as value for alpha,
+   		// which will hit this case
+   		if ( isNaN( value ) ) {
+   			return prop.def;
+   		}
 
-      function hue2rgb( p, q, h ) {
-      	h = ( h + 1 ) % 1;
-      	if ( h * 6 < 1 ) {
-      		return p + ( q - p ) * h * 6;
-      	}
-      	if ( h * 2 < 1 ) {
-      		return q;
-      	}
-      	if ( h * 3 < 2 ) {
-      		return p + ( q - p ) * ( ( 2 / 3 ) - h ) * 6;
-      	}
-      	return p;
-      }
+   		if ( type.mod ) {
 
-      var
+   			// We add mod before modding to make sure that negatives values
+   			// get converted properly: -10 -> 350
+   			return ( value + type.mod ) % type.mod;
+   		}
 
-      	// Plusequals test for += 100 -= 100
-      	rplusequals = /^([\-+])=\s*(\d+\.?\d*)/,
+   		// For now all property types without mod have min and max
+   		return 0 > value ? 0 : type.max < value ? type.max : value;
+   	}
 
-      	// A set of RE's that can match strings and generate color tuples.
-      	stringParsers = [ {
-      			re: /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
-      			parse: function( execResult ) {
-      				return [
-      					execResult[ 1 ],
-      					execResult[ 2 ],
-      					execResult[ 3 ],
-      					execResult[ 4 ]
-      				];
-      			}
-      		}, {
-      			re: /rgba?\(\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
-      			parse: function( execResult ) {
-      				return [
-      					execResult[ 1 ] * 2.55,
-      					execResult[ 2 ] * 2.55,
-      					execResult[ 3 ] * 2.55,
-      					execResult[ 4 ]
-      				];
-      			}
-      		}, {
+   	function stringParse( string ) {
+   		var inst = color(),
+   			rgba = inst._rgba = [];
 
-      			// This regex ignores A-F because it's compared against an already lowercased string
-      			re: /#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})/,
-      			parse: function( execResult ) {
-      				return [
-      					parseInt( execResult[ 1 ], 16 ),
-      					parseInt( execResult[ 2 ], 16 ),
-      					parseInt( execResult[ 3 ], 16 )
-      				];
-      			}
-      		}, {
+   		string = string.toLowerCase();
 
-      			// This regex ignores A-F because it's compared against an already lowercased string
-      			re: /#([a-f0-9])([a-f0-9])([a-f0-9])/,
-      			parse: function( execResult ) {
-      				return [
-      					parseInt( execResult[ 1 ] + execResult[ 1 ], 16 ),
-      					parseInt( execResult[ 2 ] + execResult[ 2 ], 16 ),
-      					parseInt( execResult[ 3 ] + execResult[ 3 ], 16 )
-      				];
-      			}
-      		}, {
-      			re: /hsla?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\%\s*,\s*(\d+(?:\.\d+)?)\%\s*(?:,\s*(\d?(?:\.\d+)?)\s*)?\)/,
-      			space: "hsla",
-      			parse: function( execResult ) {
-      				return [
-      					execResult[ 1 ],
-      					execResult[ 2 ] / 100,
-      					execResult[ 3 ] / 100,
-      					execResult[ 4 ]
-      				];
-      			}
-      		} ],
+   		each( stringParsers, function( i, parser ) {
+   			var parsed,
+   				match = parser.re.exec( string ),
+   				values = match && parser.parse( match ),
+   				spaceName = parser.space || "rgba";
 
-      	// JQuery.Color( )
-      	color = jQuery.Color = function( color, green, blue, alpha ) {
-      		return new jQuery.Color.fn.parse( color, green, blue, alpha );
-      	},
-      	spaces = {
-      		rgba: {
-      			props: {
-      				red: {
-      					idx: 0,
-      					type: "byte"
-      				},
-      				green: {
-      					idx: 1,
-      					type: "byte"
-      				},
-      				blue: {
-      					idx: 2,
-      					type: "byte"
-      				}
-      			}
-      		},
+   			if ( values ) {
+   				parsed = inst[ spaceName ]( values );
 
-      		hsla: {
-      			props: {
-      				hue: {
-      					idx: 0,
-      					type: "degrees"
-      				},
-      				saturation: {
-      					idx: 1,
-      					type: "percent"
-      				},
-      				lightness: {
-      					idx: 2,
-      					type: "percent"
-      				}
-      			}
-      		}
-      	},
-      	propTypes = {
-      		"byte": {
-      			floor: true,
-      			max: 255
-      		},
-      		"percent": {
-      			max: 1
-      		},
-      		"degrees": {
-      			mod: 360,
-      			floor: true
-      		}
-      	},
-      	support = color.support = {},
+   				// If this was an rgba parse the assignment might happen twice
+   				// oh well....
+   				inst[ spaces[ spaceName ].cache ] = parsed[ spaces[ spaceName ].cache ];
+   				rgba = inst._rgba = parsed._rgba;
 
-      	// Element for support tests
-      	supportElem = jQuery( "<p>" )[ 0 ],
+   				// Exit each( stringParsers ) here because we matched
+   				return false;
+   			}
+   		} );
 
-      	// Colors = jQuery.Color.names
-      	colors,
+   		// Found a stringParser that handled it
+   		if ( rgba.length ) {
 
-      	// Local aliases of functions called often
-      	each = jQuery.each;
+   			// If this came from a parsed string, force "transparent" when alpha is 0
+   			// chrome, (and maybe others) return "transparent" as rgba(0,0,0,0)
+   			if ( rgba.join() === "0,0,0,0" ) {
+   				jQuery.extend( rgba, colors.transparent );
+   			}
+   			return inst;
+   		}
 
+   		// Named colors
+   		return colors[ string ];
+   	}
 
-        f.style.cssText = "background-color:rgba(1,1,1,.5)",
-        d.rgba = f.style.backgroundColor.indexOf("rgba") > -1,
-        p(c, function(e, t) {
-            t.cache = "_" + e,
-            t.props.alpha = {
-                idx: 3,
-                type: "percent",
-                def: 1
-            }
-        }),
+   	color.fn = jQuery.extend( color.prototype, {
+   		parse: function( red, green, blue, alpha ) {
+   			if ( red === undefined ) {
+   				this._rgba = [ null, null, null, null ];
+   				return this;
+   			}
+   			if ( red.jquery || red.nodeType ) {
+   				red = jQuery( red ).css( green );
+   				green = undefined;
+   			}
 
-        u.fn = jQuery.extend(u.prototype, {
-            parse: function(i, o, s, l) {
-                if (i === t)
-                    return this._rgba = [null, null, null, null],
-                    this;
-                (i.jquery || i.nodeType) && (i = jQuery(i).css(o),
-                o = t);
-                var d = this
-                  , f = jQuery.type(i)
-                  , h = this._rgba = [];
-                return o !== t && (i = [i, o, s, l],
-                f = "array"),
-                "string" === f ? this.parse(r(i) || a._default) : "array" === f ? (p(c.rgba.props, function(e, t) {
-                    h[t.idx] = n(i[t.idx], t)
-                }),
-                this) : "object" === f ? (i instanceof u ? p(c, function(e, t) {
-                    i[t.cache] && (d[t.cache] = i[t.cache].slice())
-                }) : p(c, function(t, r) {
-                    var a = r.cache;
-                    p(r.props, function(e, t) {
-                        if (!d[a] && r.to) {
-                            if ("alpha" === e || null == i[e])
-                                return;
-                            d[a] = r.to(d._rgba)
-                        }
-                        d[a][t.idx] = n(i[e], t, !0)
-                    }),
-                    d[a] && 0 > jQuery.inArray(null, d[a].slice(0, 3)) && (d[a][3] = 1,
-                    r.from && (d._rgba = r.from(d[a])))
-                }),
-                this) : t
-            },
-            is: function(e) {
-                var n = u(e)
-                  , r = !0
-                  , i = this;
-                return p(c, function(e, a) {
-                    var o, s = n[a.cache];
-                    return s && (o = i[a.cache] || a.to && a.to(i._rgba) || [],
-                    p(a.props, function(e, n) {
-                        return null != s[n.idx] ? r = s[n.idx] === o[n.idx] : t
-                    })),
-                    r
-                }),
-                r
-            },
-            _space: function() {
-                var e = []
-                  , t = this;
-                return p(c, function(n, r) {
-                    t[r.cache] && e.push(n)
-                }),
-                e.pop()
-            },
-            transition: function(e, t) {
-                var r = u(e)
-                  , i = r._space()
-                  , a = c[i]
-                  , o = 0 === this.alpha() ? u("transparent") : this
-                  , s = o[a.cache] || a.to(o._rgba)
-                  , d = s.slice();
-                return r = r[a.cache],
-                p(a.props, function(e, i) {
-                    var a = i.idx
-                      , o = s[a]
-                      , u = r[a]
-                      , c = l[i.type] || {};
-                    null !== u && (null === o ? d[a] = u : (c.mod && (u - o > c.mod / 2 ? o += c.mod : o - u > c.mod / 2 && (o -= c.mod)),
-                    d[a] = n((u - o) * t + o, i)))
-                }),
-                this[i](d)
-            },
-            blend: function(t) {
-                if (1 === this._rgba[3])
-                    return this;
-                var n = this._rgba.slice()
-                  , r = n.pop()
-                  , i = u(t)._rgba;
-                return u(jQuery.map(n, function(e, t) {
-                    return (1 - r) * i[t] + r * e
-                }))
-            },
-            toRgbaString: function() {
-                var t = "rgba("
-                  , n = jQuery.map(this._rgba, function(e, t) {
-                    return null == e ? t > 2 ? 1 : 0 : e
-                });
-                return 1 === n[3] && (n.pop(),
-                t = "rgb("),
-                t + n.join() + ")"
-            },
-            toHslaString: function() {
-                var t = "hsla("
-                  , n = e.map(this.hsla(), function(e, t) {
-                    return null == e && (e = t > 2 ? 1 : 0),
-                    t && 3 > t && (e = Math.round(100 * e) + "%"),
-                    e
-                });
-                return 1 === n[3] && (n.pop(),
-                t = "hsl("),
-                t + n.join() + ")"
-            },
-            toHexString: function(t) {
-                var n = this._rgba.slice()
-                  , r = n.pop();
-                return t && n.push(~~(255 * r)),
-                "#" + e.map(n, function(e) {
-                    return e = (e || 0).toString(16),
-                    1 === e.length ? "0" + e : e
-                }).join("")
-            },
-            toString: function() {
-                return 0 === this._rgba[3] ? "transparent" : this.toRgbaString()
-            }
-        }),
-        u.fn.parse.prototype = u.fn,
-        c.hsla.to = function(e) {
-            if (null == e[0] || null == e[1] || null == e[2])
-                return [null, null, null, e[3]];
-            var t, n, r = e[0] / 255, i = e[1] / 255, a = e[2] / 255, o = e[3], s = Math.max(r, i, a), u = Math.min(r, i, a), c = s - u, l = s + u, d = .5 * l;
-            return t = u === s ? 0 : r === s ? 60 * (i - a) / c + 360 : i === s ? 60 * (a - r) / c + 120 : 60 * (r - i) / c + 240,
-            n = 0 === c ? 0 : .5 >= d ? c / l : c / (2 - l),
-            [Math.round(t) % 360, n, d, null == o ? 1 : o]
-        }
-        ,
-        c.hsla.from = function(e) {
-            if (null == e[0] || null == e[1] || null == e[2])
-                return [null, null, null, e[3]];
-            var t = e[0] / 360
-              , n = e[1]
-              , r = e[2]
-              , a = e[3]
-              , o = .5 >= r ? r * (1 + n) : r + n - r * n
-              , s = 2 * r - o;
-            return [Math.round(255 * i(s, o, t + 1 / 3)), Math.round(255 * i(s, o, t)), Math.round(255 * i(s, o, t - 1 / 3)), a]
-        }
-        ,
-        p(c, function(r, i) {
-            var a = i.props
-              , s = i.cache
-              , c = i.to
-              , l = i.from;
-            u.fn[r] = function(r) {
-                if (c && !this[s] && (this[s] = c(this._rgba)),
-                r === t)
-                    return this[s].slice();
-                var i, o = e.type(r), d = "array" === o || "object" === o ? r : arguments, f = this[s].slice();
-                return p(a, function(e, t) {
-                    var r = d["object" === o ? e : t.idx];
-                    null == r && (r = f[t.idx]),
-                    f[t.idx] = n(r, t)
-                }),
-                l ? (i = u(l(f)),
-                i[s] = f,
-                i) : u(f)
-            }
-            ,
-            p(a, function(t, n) {
-                u.fn[t] || (u.fn[t] = function(i) {
-                    var a, s = e.type(i), u = "alpha" === t ? this._hsla ? "hsla" : "rgba" : r, c = this[u](), l = c[n.idx];
-                    return "undefined" === s ? l : ("function" === s && (i = i.call(this, l),
-                    s = e.type(i)),
-                    null == i && n.empty ? this : ("string" === s && (a = o.exec(i)) && (i = l + parseFloat(a[2]) * ("+" === a[1] ? 1 : -1)),
-                    c[n.idx] = i,
-                    this[u](c)))
-                }
-                )
-            })
-        }),
-        u.hook = function(t) {
-            var n = t.split(" ");
-            p(n, function(t, n) {
-                e.cssHooks[n] = {
-                    set: function(t, i) {
-                        var a, o, s = "";
-                        if ("transparent" !== i && ("string" !== e.type(i) || (a = r(i)))) {
-                            if (i = u(a || i),
-                            !d.rgba && 1 !== i._rgba[3]) {
-                                for (o = "backgroundColor" === n ? t.parentNode : t; ("" === s || "transparent" === s) && o && o.style; )
-                                    try {
-                                        s = e.css(o, "backgroundColor"),
-                                        o = o.parentNode
-                                    } catch (e) {}
-                                i = i.blend(s && "transparent" !== s ? s : "_default")
-                            }
-                            i = i.toRgbaString()
-                        }
-                        try {
-                            t.style[n] = i
-                        } catch (e) {}
-                    }
-                },
-                e.fx.step[n] = function(t) {
-                    t.colorInit || (t.start = u(t.elem, n),
-                    t.end = u(t.end),
-                    t.colorInit = !0),
-                    e.cssHooks[n].set(t.elem, t.start.transition(t.end, t.pos))
-                }
-            })
-        }
-        ,
-        u.hook("backgroundColor borderBottomColor borderLeftColor borderRightColor borderTopColor color columnRuleColor outlineColor textDecorationColor textEmphasisColor"),
-        e.cssHooks.borderColor = {
-            expand: function(e) {
-                var t = {};
-                return p(["Top", "Right", "Bottom", "Left"], function(n, r) {
-                    t["border" + r + "Color"] = e
-                }),
-                t
-            }
-        },
+   			var inst = this,
+   				type = jQuery.type( red ),
+   				rgba = this._rgba = [];
 
-        // Basic color names only.
-        // Usage of any of the other color names requires adding yourself or including
-        // jquery.color.svg-names.js.
-        colors = jQuery.Color.names = {
+   			// More than 1 argument specified - assume ( red, green, blue, alpha )
+   			if ( green !== undefined ) {
+   				red = [ red, green, blue, alpha ];
+   				type = "array";
+   			}
 
-        	// 4.1. Basic color keywords
-        	aqua: "#00ffff",
-        	black: "#000000",
-        	blue: "#0000ff",
-        	fuchsia: "#ff00ff",
-        	gray: "#808080",
-        	green: "#008000",
-        	lime: "#00ff00",
-        	maroon: "#800000",
-        	navy: "#000080",
-        	olive: "#808000",
-        	purple: "#800080",
-        	red: "#ff0000",
-        	silver: "#c0c0c0",
-        	teal: "#008080",
-        	white: "#ffffff",
-        	yellow: "#ffff00",
+   			if ( type === "string" ) {
+   				return this.parse( stringParse( red ) || colors._default );
+   			}
 
-        	// 4.2.3. "transparent" color keyword
-        	transparent: [ null, null, null, 0 ],
+   			if ( type === "array" ) {
+   				each( spaces.rgba.props, function( key, prop ) {
+   					rgba[ prop.idx ] = clamp( red[ prop.idx ], prop );
+   				} );
+   				return this;
+   			}
 
-        	_default: "#ffffff"
-        }
-    }(i),
-    function() {
-        function t(t) {
-            var n, r, i = t.ownerDocument.defaultView ? t.ownerDocument.defaultView.getComputedStyle(t, null) : t.currentStyle, a = {};
-            if (i && i.length && i[0] && i[i[0]])
-                for (r = i.length; r--; )
-                    n = i[r],
-                    "string" == typeof i[n] && (a[e.camelCase(n)] = i[n]);
-            else
-                for (n in i)
-                    "string" == typeof i[n] && (a[n] = i[n]);
-            return a
-        }
-        function n(t, n) {
-            var r, i, o = {};
-            for (r in n)
-                i = n[r],
-                t[r] !== i && (a[r] || (e.fx.step[r] || !isNaN(parseFloat(i))) && (o[r] = i));
-            return o
-        }
-        var r = ["add", "remove", "toggle"]
-          , a = {
-            border: 1,
-            borderBottom: 1,
-            borderColor: 1,
-            borderLeft: 1,
-            borderRight: 1,
-            borderTop: 1,
-            borderWidth: 1,
-            margin: 1,
-            padding: 1
-        };
-        e.each(["borderLeftStyle", "borderRightStyle", "borderBottomStyle", "borderTopStyle"], function(t, n) {
-            e.fx.step[n] = function(e) {
-                ("none" !== e.end && !e.setAttr || 1 === e.pos && !e.setAttr) && (i.style(e.elem, n, e.end),
-                e.setAttr = !0)
-            }
-        }),
-        e.fn.addBack || (e.fn.addBack = function(e) {
-            return this.add(null == e ? this.prevObject : this.prevObject.filter(e))
-        }
-        ),
-        e.effects.animateClass = function(i, a, o, s) {
-            var u = e.speed(a, o, s);
-            return this.queue(function() {
-                var a, o = e(this), s = o.attr("class") || "", c = u.children ? o.find("*").addBack() : o;
-                c = c.map(function() {
-                    return {
-                        el: e(this),
-                        start: t(this)
-                    }
-                }),
-                a = function() {
-                    e.each(r, function(e, t) {
-                        i[t] && o[t + "Class"](i[t])
-                    })
-                }
-                ,
-                a(),
-                c = c.map(function() {
-                    return this.end = t(this.el[0]),
-                    this.diff = n(this.start, this.end),
-                    this
-                }),
-                o.attr("class", s),
-                c = c.map(function() {
-                    var t = this
-                      , n = e.Deferred()
-                      , r = e.extend({}, u, {
-                        queue: !1,
-                        complete: function() {
-                            n.resolve(t)
-                        }
-                    });
-                    return this.el.animate(this.diff, r),
-                    n.promise()
-                }),
-                e.when.apply(e, c.get()).done(function() {
-                    a(),
-                    e.each(arguments, function() {
-                        var t = this.el;
-                        e.each(this.diff, function(e) {
-                            t.css(e, "")
-                        })
-                    }),
-                    u.complete.call(o[0])
-                })
-            })
-        }
-        ,
-        e.fn.extend({
-            addClass: function(t) {
-                return function(n, r, i, a) {
-                    return r ? e.effects.animateClass.call(this, {
-                        add: n
-                    }, r, i, a) : t.apply(this, arguments)
-                }
-            }(e.fn.addClass),
-            removeClass: function(t) {
-                return function(n, r, i, a) {
-                    return arguments.length > 1 ? e.effects.animateClass.call(this, {
-                        remove: n
-                    }, r, i, a) : t.apply(this, arguments)
-                }
-            }(e.fn.removeClass),
-            toggleClass: function(t) {
-                return function(n, r, i, a, o) {
-                    return "boolean" == typeof r || void 0 === r ? i ? e.effects.animateClass.call(this, r ? {
-                        add: n
-                    } : {
-                        remove: n
-                    }, i, a, o) : t.apply(this, arguments) : e.effects.animateClass.call(this, {
-                        toggle: n
-                    }, r, i, a)
-                }
-            }(e.fn.toggleClass),
-            switchClass: function(t, n, r, i, a) {
-                return e.effects.animateClass.call(this, {
-                    add: n,
-                    remove: t
-                }, r, i, a)
-            }
-        })
-    }(),
-    function() {
-        function i(t, n, r, i) {
-            return e.isPlainObject(t) && (n = t,
-            t = t.effect),
-            t = {
-                effect: t
-            },
-            null == n && (n = {}),
-            e.isFunction(n) && (i = n,
-            r = null,
-            n = {}),
-            ("number" == typeof n || e.fx.speeds[n]) && (i = r,
-            r = n,
-            n = {}),
-            e.isFunction(r) && (i = r,
-            r = null),
-            n && e.extend(t, n),
-            r = r || n.duration,
-            t.duration = e.fx.off ? 0 : "number" == typeof r ? r : r in e.fx.speeds ? e.fx.speeds[r] : e.fx.speeds._default,
-            t.complete = i || n.complete,
-            t
-        }
-        function a(t) {
-            return !(t && "number" != typeof t && !e.fx.speeds[t]) || ("string" == typeof t && !e.effects.effect[t] || (!!e.isFunction(t) || "object" == typeof t && !t.effect))
-        }
-        function o(e, t) {
-            var n = t.outerWidth()
-              , r = t.outerHeight()
-              , i = /^rect\((-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto)\)$/
-              , a = i.exec(e) || ["", 0, n, r, 0];
-            return {
-                top: parseFloat(a[1]) || 0,
-                right: "auto" === a[2] ? n : parseFloat(a[2]),
-                bottom: "auto" === a[3] ? r : parseFloat(a[3]),
-                left: parseFloat(a[4]) || 0
-            }
-        }
-        e.expr && e.expr.filters && e.expr.filters.animated && (e.expr.filters.animated = function(t) {
-            return function(n) {
-                return !!e(n).data(r) || t(n)
-            }
-        }(e.expr.filters.animated)),
-        !1 !== e.uiBackCompat && e.extend(e.effects, {
-            save: function(e, n) {
-                for (var r = 0, i = n.length; i > r; r++)
-                    null !== n[r] && e.data(t + n[r], e[0].style[n[r]])
-            },
-            restore: function(e, n) {
-                for (var r, i = 0, a = n.length; a > i; i++)
-                    null !== n[i] && (r = e.data(t + n[i]),
-                    e.css(n[i], r))
-            },
-            setMode: function(e, t) {
-                return "toggle" === t && (t = e.is(":hidden") ? "show" : "hide"),
-                t
-            },
-            createWrapper: function(t) {
-                if (t.parent().is(".ui-effects-wrapper"))
-                    return t.parent();
-                var n = {
-                    width: t.outerWidth(!0),
-                    height: t.outerHeight(!0),
-                    "float": t.css("float")
-                }
-                  , r = e("<div></div>").addClass("ui-effects-wrapper").css({
-                    fontSize: "100%",
-                    background: "transparent",
-                    border: "none",
-                    margin: 0,
-                    padding: 0
-                })
-                  , i = {
-                    width: t.width(),
-                    height: t.height()
-                }
-                  , a = document.activeElement;
-                try {
-                    a.id
-                } catch (e) {
-                    a = document.body
-                }
-                return t.wrap(r),
-                (t[0] === a || e.contains(t[0], a)) && e(a).trigger("focus"),
-                r = t.parent(),
-                "static" === t.css("position") ? (r.css({
-                    position: "relative"
-                }),
-                t.css({
-                    position: "relative"
-                })) : (e.extend(n, {
-                    position: t.css("position"),
-                    zIndex: t.css("z-index")
-                }),
-                e.each(["top", "left", "bottom", "right"], function(e, r) {
-                    n[r] = t.css(r),
-                    isNaN(parseInt(n[r], 10)) && (n[r] = "auto")
-                }),
-                t.css({
-                    position: "relative",
-                    top: 0,
-                    left: 0,
-                    right: "auto",
-                    bottom: "auto"
-                })),
-                t.css(i),
-                r.css(n).show()
-            },
-            removeWrapper: function(t) {
-                var n = document.activeElement;
-                return t.parent().is(".ui-effects-wrapper") && (t.parent().replaceWith(t),
-                (t[0] === n || e.contains(t[0], n)) && e(n).trigger("focus")),
-                t
-            }
-        }),
-        e.extend(e.effects, {
-            version: "1.12.1",
-            define: function(t, n, r) {
-                return r || (r = n,
-                n = "effect"),
-                e.effects.effect[t] = r,
-                e.effects.effect[t].mode = n,
-                r
-            },
-            scaledDimensions: function(e, t, n) {
-                if (0 === t)
-                    return {
-                        height: 0,
-                        width: 0,
-                        outerHeight: 0,
-                        outerWidth: 0
-                    };
-                var r = "horizontal" !== n ? (t || 100) / 100 : 1
-                  , i = "vertical" !== n ? (t || 100) / 100 : 1;
-                return {
-                    height: e.height() * i,
-                    width: e.width() * r,
-                    outerHeight: e.outerHeight() * i,
-                    outerWidth: e.outerWidth() * r
-                }
-            },
-            clipToBox: function(e) {
-                return {
-                    width: e.clip.right - e.clip.left,
-                    height: e.clip.bottom - e.clip.top,
-                    left: e.clip.left,
-                    top: e.clip.top
-                }
-            },
-            unshift: function(e, t, n) {
-                var r = e.queue();
-                t > 1 && r.splice.apply(r, [1, 0].concat(r.splice(t, n))),
-                e.dequeue()
-            },
-            saveStyle: function(e) {
-                e.data(n, e[0].style.cssText)
-            },
-            restoreStyle: function(e) {
-                e[0].style.cssText = e.data(n) || "",
-                e.removeData(n)
-            },
-            mode: function(e, t) {
-                var n = e.is(":hidden");
-                return "toggle" === t && (t = n ? "show" : "hide"),
-                (n ? "hide" === t : "show" === t) && (t = "none"),
-                t
-            },
-            getBaseline: function(e, t) {
-                var n, r;
-                switch (e[0]) {
-                case "top":
-                    n = 0;
-                    break;
-                case "middle":
-                    n = .5;
-                    break;
-                case "bottom":
-                    n = 1;
-                    break;
-                default:
-                    n = e[0] / t.height
-                }
-                switch (e[1]) {
-                case "left":
-                    r = 0;
-                    break;
-                case "center":
-                    r = .5;
-                    break;
-                case "right":
-                    r = 1;
-                    break;
-                default:
-                    r = e[1] / t.width
-                }
-                return {
-                    x: r,
-                    y: n
-                }
-            },
-            createPlaceholder: function(n) {
-                var r, i = n.css("position"), a = n.position();
-                return n.css({
-                    marginTop: n.css("marginTop"),
-                    marginBottom: n.css("marginBottom"),
-                    marginLeft: n.css("marginLeft"),
-                    marginRight: n.css("marginRight")
-                }).outerWidth(n.outerWidth()).outerHeight(n.outerHeight()),
-                /^(static|relative)/.test(i) && (i = "absolute",
-                r = e("<" + n[0].nodeName + ">").insertAfter(n).css({
-                    display: /^(inline|ruby)/.test(n.css("display")) ? "inline-block" : "block",
-                    visibility: "hidden",
-                    marginTop: n.css("marginTop"),
-                    marginBottom: n.css("marginBottom"),
-                    marginLeft: n.css("marginLeft"),
-                    marginRight: n.css("marginRight"),
-                    "float": n.css("float")
-                }).outerWidth(n.outerWidth()).outerHeight(n.outerHeight()).addClass("ui-effects-placeholder"),
-                n.data(t + "placeholder", r)),
-                n.css({
-                    position: i,
-                    left: a.left,
-                    top: a.top
-                }),
-                r
-            },
-            removePlaceholder: function(e) {
-                var n = t + "placeholder"
-                  , r = e.data(n);
-                r && (r.remove(),
-                e.removeData(n))
-            },
-            cleanUp: function(t) {
-                e.effects.restoreStyle(t),
-                e.effects.removePlaceholder(t)
-            },
-            setTransition: function(t, n, r, i) {
-                return i = i || {},
-                e.each(n, function(e, n) {
-                    var a = t.cssUnit(n);
-                    a[0] > 0 && (i[n] = a[0] * r + a[1])
-                }),
-                i
-            }
-        }),
-        e.fn.extend({
-            effect: function() {
-                function t(t) {
-                    function i() {
-                        u.removeData(r),
-                        e.effects.cleanUp(u),
-                        "hide" === n.mode && u.hide(),
-                        s()
-                    }
-                    function s() {
-                        e.isFunction(c) && c.call(u[0]),
-                        e.isFunction(t) && t()
-                    }
-                    var u = e(this);
-                    n.mode = d.shift(),
-                    !1 === e.uiBackCompat || o ? "none" === n.mode ? (u[l](),
-                    s()) : a.call(u[0], n, i) : (u.is(":hidden") ? "hide" === l : "show" === l) ? (u[l](),
-                    s()) : a.call(u[0], n, s)
-                }
-                var n = i.apply(this, arguments)
-                  , a = e.effects.effect[n.effect]
-                  , o = a.mode
-                  , s = n.queue
-                  , u = s || "fx"
-                  , c = n.complete
-                  , l = n.mode
-                  , d = []
-                  , f = function(t) {
-                    var n = e(this)
-                      , i = e.effects.mode(n, l) || o;
-                    n.data(r, !0),
-                    d.push(i),
-                    o && ("show" === i || i === o && "hide" === i) && n.show(),
-                    o && "none" === i || e.effects.saveStyle(n),
-                    e.isFunction(t) && t()
-                };
-                return e.fx.off || !a ? l ? this[l](n.duration, c) : this.each(function() {
-                    c && c.call(this)
-                }) : !1 === s ? this.each(f).each(t) : this.queue(u, f).queue(u, t)
-            },
-            show: function(e) {
-                return function(t) {
-                    if (a(t))
-                        return e.apply(this, arguments);
-                    var n = i.apply(this, arguments);
-                    return n.mode = "show",
-                    this.effect.call(this, n)
-                }
-            }(e.fn.show),
-            hide: function(e) {
-                return function(t) {
-                    if (a(t))
-                        return e.apply(this, arguments);
-                    var n = i.apply(this, arguments);
-                    return n.mode = "hide",
-                    this.effect.call(this, n)
-                }
-            }(e.fn.hide),
-            toggle: function(e) {
-                return function(t) {
-                    if (a(t) || "boolean" == typeof t)
-                        return e.apply(this, arguments);
-                    var n = i.apply(this, arguments);
-                    return n.mode = "toggle",
-                    this.effect.call(this, n)
-                }
-            }(e.fn.toggle),
-            cssUnit: function(t) {
-                var n = this.css(t)
-                  , r = [];
-                return e.each(["em", "px", "%", "pt"], function(e, t) {
-                    n.indexOf(t) > 0 && (r = [parseFloat(n), t])
-                }),
-                r
-            },
-            cssClip: function(e) {
-                return e ? this.css("clip", "rect(" + e.top + "px " + e.right + "px " + e.bottom + "px " + e.left + "px)") : o(this.css("clip"), this)
-            },
-            transfer: function(t, n) {
-                var r = e(this)
-                  , i = e(t.to)
-                  , a = "fixed" === i.css("position")
-                  , o = e("body")
-                  , s = a ? o.scrollTop() : 0
-                  , u = a ? o.scrollLeft() : 0
-                  , c = i.offset()
-                  , l = {
-                    top: c.top - s,
-                    left: c.left - u,
-                    height: i.innerHeight(),
-                    width: i.innerWidth()
-                }
-                  , d = r.offset()
-                  , f = e("<div class='ui-effects-transfer'></div>").appendTo("body").addClass(t.className).css({
-                    top: d.top - s,
-                    left: d.left - u,
-                    height: r.innerHeight(),
-                    width: r.innerWidth(),
-                    position: a ? "fixed" : "absolute"
-                }).animate(l, t.duration, t.easing, function() {
-                    f.remove(),
-                    e.isFunction(n) && n()
-                })
-            }
-        }),
-        e.fx.step.clip = function(t) {
-            t.clipInit || (t.start = e(t.elem).cssClip(),
-            "string" == typeof t.end && (t.end = o(t.end, t.elem)),
-            t.clipInit = !0),
-            e(t.elem).cssClip({
-                top: t.pos * (t.end.top - t.start.top) + t.start.top,
-                right: t.pos * (t.end.right - t.start.right) + t.start.right,
-                bottom: t.pos * (t.end.bottom - t.start.bottom) + t.start.bottom,
-                left: t.pos * (t.end.left - t.start.left) + t.start.left
-            })
-        }
-    }(),
-    function() {
-        var t = {};
-        e.each(["Quad", "Cubic", "Quart", "Quint", "Expo"], function(e, n) {
-            t[n] = function(t) {
-                return Math.pow(t, e + 2)
-            }
-        }),
-        e.extend(t, {
-            Sine: function(e) {
-                return 1 - Math.cos(e * Math.PI / 2)
-            },
-            Circ: function(e) {
-                return 1 - Math.sqrt(1 - e * e)
-            },
-            Elastic: function(e) {
-                return 0 === e || 1 === e ? e : -Math.pow(2, 8 * (e - 1)) * Math.sin((80 * (e - 1) - 7.5) * Math.PI / 15)
-            },
-            Back: function(e) {
-                return e * e * (3 * e - 2)
-            },
-            Bounce: function(e) {
-                for (var t, n = 4; ((t = Math.pow(2, --n)) - 1) / 11 > e; )
-                    ;
-                return 1 / Math.pow(4, 3 - n) - 7.5625 * Math.pow((3 * t - 2) / 22 - e, 2)
-            }
-        }),
-        e.each(t, function(t, n) {
-            e.easing["easeIn" + t] = n,
-            e.easing["easeOut" + t] = function(e) {
-                return 1 - n(1 - e)
-            }
-            ,
-            e.easing["easeInOut" + t] = function(e) {
-                return .5 > e ? n(2 * e) / 2 : 1 - n(-2 * e + 2) / 2
-            }
-        })
-    }();
-    e.effects;
+   			if ( type === "object" ) {
+   				if ( red instanceof color ) {
+   					each( spaces, function( spaceName, space ) {
+   						if ( red[ space.cache ] ) {
+   							inst[ space.cache ] = red[ space.cache ].slice();
+   						}
+   					} );
+   				} else {
+   					each( spaces, function( spaceName, space ) {
+   						var cache = space.cache;
+   						each( space.props, function( key, prop ) {
+
+   							// If the cache doesn't exist, and we know how to convert
+   							if ( !inst[ cache ] && space.to ) {
+
+   								// If the value was null, we don't need to copy it
+   								// if the key was alpha, we don't need to copy it either
+   								if ( key === "alpha" || red[ key ] == null ) {
+   									return;
+   								}
+   								inst[ cache ] = space.to( inst._rgba );
+   							}
+
+   							// This is the only case where we allow nulls for ALL properties.
+   							// call clamp with alwaysAllowEmpty
+   							inst[ cache ][ prop.idx ] = clamp( red[ key ], prop, true );
+   						} );
+
+   						// Everything defined but alpha?
+   						if ( inst[ cache ] &&
+   								jQuery.inArray( null, inst[ cache ].slice( 0, 3 ) ) < 0 ) {
+
+   							// Use the default of 1
+   							inst[ cache ][ 3 ] = 1;
+   							if ( space.from ) {
+   								inst._rgba = space.from( inst[ cache ] );
+   							}
+   						}
+   					} );
+   				}
+   				return this;
+   			}
+   		},
+   		is: function( compare ) {
+   			var is = color( compare ),
+   				same = true,
+   				inst = this;
+
+   			each( spaces, function( _, space ) {
+   				var localCache,
+   					isCache = is[ space.cache ];
+   				if ( isCache ) {
+   					localCache = inst[ space.cache ] || space.to && space.to( inst._rgba ) || [];
+   					each( space.props, function( _, prop ) {
+   						if ( isCache[ prop.idx ] != null ) {
+   							same = ( isCache[ prop.idx ] === localCache[ prop.idx ] );
+   							return same;
+   						}
+   					} );
+   				}
+   				return same;
+   			} );
+   			return same;
+   		},
+   		_space: function() {
+   			var used = [],
+   				inst = this;
+   			each( spaces, function( spaceName, space ) {
+   				if ( inst[ space.cache ] ) {
+   					used.push( spaceName );
+   				}
+   			} );
+   			return used.pop();
+   		},
+   		transition: function( other, distance ) {
+   			var end = color( other ),
+   				spaceName = end._space(),
+   				space = spaces[ spaceName ],
+   				startColor = this.alpha() === 0 ? color( "transparent" ) : this,
+   				start = startColor[ space.cache ] || space.to( startColor._rgba ),
+   				result = start.slice();
+
+   			end = end[ space.cache ];
+   			each( space.props, function( key, prop ) {
+   				var index = prop.idx,
+   					startValue = start[ index ],
+   					endValue = end[ index ],
+   					type = propTypes[ prop.type ] || {};
+
+   				// If null, don't override start value
+   				if ( endValue === null ) {
+   					return;
+   				}
+
+   				// If null - use end
+   				if ( startValue === null ) {
+   					result[ index ] = endValue;
+   				} else {
+   					if ( type.mod ) {
+   						if ( endValue - startValue > type.mod / 2 ) {
+   							startValue += type.mod;
+   						} else if ( startValue - endValue > type.mod / 2 ) {
+   							startValue -= type.mod;
+   						}
+   					}
+   					result[ index ] = clamp( ( endValue - startValue ) * distance + startValue, prop );
+   				}
+   			} );
+   			return this[ spaceName ]( result );
+   		},
+   		blend: function( opaque ) {
+
+   			// If we are already opaque - return ourself
+   			if ( this._rgba[ 3 ] === 1 ) {
+   				return this;
+   			}
+
+   			var rgb = this._rgba.slice(),
+   				a = rgb.pop(),
+   				blend = color( opaque )._rgba;
+
+   			return color( jQuery.map( rgb, function( v, i ) {
+   				return ( 1 - a ) * blend[ i ] + a * v;
+   			} ) );
+   		},
+   		toRgbaString: function() {
+   			var prefix = "rgba(",
+   				rgba = jQuery.map( this._rgba, function( v, i ) {
+   					return v == null ? ( i > 2 ? 1 : 0 ) : v;
+   				} );
+
+   			if ( rgba[ 3 ] === 1 ) {
+   				rgba.pop();
+   				prefix = "rgb(";
+   			}
+
+   			return prefix + rgba.join() + ")";
+   		},
+   		toHslaString: function() {
+   			var prefix = "hsla(",
+   				hsla = jQuery.map( this.hsla(), function( v, i ) {
+   					if ( v == null ) {
+   						v = i > 2 ? 1 : 0;
+   					}
+
+   					// Catch 1 and 2
+   					if ( i && i < 3 ) {
+   						v = Math.round( v * 100 ) + "%";
+   					}
+   					return v;
+   				} );
+
+   			if ( hsla[ 3 ] === 1 ) {
+   				hsla.pop();
+   				prefix = "hsl(";
+   			}
+   			return prefix + hsla.join() + ")";
+   		},
+   		toHexString: function( includeAlpha ) {
+   			var rgba = this._rgba.slice(),
+   				alpha = rgba.pop();
+
+   			if ( includeAlpha ) {
+   				rgba.push( ~~( alpha * 255 ) );
+   			}
+
+   			return "#" + jQuery.map( rgba, function( v ) {
+
+   				// Default to 0 when nulls exist
+   				v = ( v || 0 ).toString( 16 );
+   				return v.length === 1 ? "0" + v : v;
+   			} ).join( "" );
+   		},
+   		toString: function() {
+   			return this._rgba[ 3 ] === 0 ? "transparent" : this.toRgbaString();
+   		}
+   	} );
+   	color.fn.parse.prototype = color.fn;
+
+   	// Hsla conversions adapted from:
+   	// https://code.google.com/p/maashaack/source/browse/packages/graphics/trunk/src/graphics/colors/HUE2RGB.as?r=5021
+
+   	function hue2rgb( p, q, h ) {
+   		h = ( h + 1 ) % 1;
+   		if ( h * 6 < 1 ) {
+   			return p + ( q - p ) * h * 6;
+   		}
+   		if ( h * 2 < 1 ) {
+   			return q;
+   		}
+   		if ( h * 3 < 2 ) {
+   			return p + ( q - p ) * ( ( 2 / 3 ) - h ) * 6;
+   		}
+   		return p;
+   	}
+
+   	spaces.hsla.to = function( rgba ) {
+   		if ( rgba[ 0 ] == null || rgba[ 1 ] == null || rgba[ 2 ] == null ) {
+   			return [ null, null, null, rgba[ 3 ] ];
+   		}
+   		var r = rgba[ 0 ] / 255,
+   			g = rgba[ 1 ] / 255,
+   			b = rgba[ 2 ] / 255,
+   			a = rgba[ 3 ],
+   			max = Math.max( r, g, b ),
+   			min = Math.min( r, g, b ),
+   			diff = max - min,
+   			add = max + min,
+   			l = add * 0.5,
+   			h, s;
+
+   		if ( min === max ) {
+   			h = 0;
+   		} else if ( r === max ) {
+   			h = ( 60 * ( g - b ) / diff ) + 360;
+   		} else if ( g === max ) {
+   			h = ( 60 * ( b - r ) / diff ) + 120;
+   		} else {
+   			h = ( 60 * ( r - g ) / diff ) + 240;
+   		}
+
+   		// Chroma (diff) == 0 means greyscale which, by definition, saturation = 0%
+   		// otherwise, saturation is based on the ratio of chroma (diff) to lightness (add)
+   		if ( diff === 0 ) {
+   			s = 0;
+   		} else if ( l <= 0.5 ) {
+   			s = diff / add;
+   		} else {
+   			s = diff / ( 2 - add );
+   		}
+   		return [ Math.round( h ) % 360, s, l, a == null ? 1 : a ];
+   	};
+
+   	spaces.hsla.from = function( hsla ) {
+   		if ( hsla[ 0 ] == null || hsla[ 1 ] == null || hsla[ 2 ] == null ) {
+   			return [ null, null, null, hsla[ 3 ] ];
+   		}
+   		var h = hsla[ 0 ] / 360,
+   			s = hsla[ 1 ],
+   			l = hsla[ 2 ],
+   			a = hsla[ 3 ],
+   			q = l <= 0.5 ? l * ( 1 + s ) : l + s - l * s,
+   			p = 2 * l - q;
+
+   		return [
+   			Math.round( hue2rgb( p, q, h + ( 1 / 3 ) ) * 255 ),
+   			Math.round( hue2rgb( p, q, h ) * 255 ),
+   			Math.round( hue2rgb( p, q, h - ( 1 / 3 ) ) * 255 ),
+   			a
+   		];
+   	};
+
+   	each( spaces, function( spaceName, space ) {
+   		var props = space.props,
+   			cache = space.cache,
+   			to = space.to,
+   			from = space.from;
+
+   		// Makes rgba() and hsla()
+   		color.fn[ spaceName ] = function( value ) {
+
+   			// Generate a cache for this space if it doesn't exist
+   			if ( to && !this[ cache ] ) {
+   				this[ cache ] = to( this._rgba );
+   			}
+   			if ( value === undefined ) {
+   				return this[ cache ].slice();
+   			}
+
+   			var ret,
+   				type = jQuery.type( value ),
+   				arr = ( type === "array" || type === "object" ) ? value : arguments,
+   				local = this[ cache ].slice();
+
+   			each( props, function( key, prop ) {
+   				var val = arr[ type === "object" ? key : prop.idx ];
+   				if ( val == null ) {
+   					val = local[ prop.idx ];
+   				}
+   				local[ prop.idx ] = clamp( val, prop );
+   			} );
+
+   			if ( from ) {
+   				ret = color( from( local ) );
+   				ret[ cache ] = local;
+   				return ret;
+   			} else {
+   				return color( local );
+   			}
+   		};
+
+   		// Makes red() green() blue() alpha() hue() saturation() lightness()
+   		each( props, function( key, prop ) {
+
+   			// Alpha is included in more than one space
+   			if ( color.fn[ key ] ) {
+   				return;
+   			}
+   			color.fn[ key ] = function( value ) {
+   				var vtype = jQuery.type( value ),
+   					fn = ( key === "alpha" ? ( this._hsla ? "hsla" : "rgba" ) : spaceName ),
+   					local = this[ fn ](),
+   					cur = local[ prop.idx ],
+   					match;
+
+   				if ( vtype === "undefined" ) {
+   					return cur;
+   				}
+
+   				if ( vtype === "function" ) {
+   					value = value.call( this, cur );
+   					vtype = jQuery.type( value );
+   				}
+   				if ( value == null && prop.empty ) {
+   					return this;
+   				}
+   				if ( vtype === "string" ) {
+   					match = rplusequals.exec( value );
+   					if ( match ) {
+   						value = cur + parseFloat( match[ 2 ] ) * ( match[ 1 ] === "+" ? 1 : -1 );
+   					}
+   				}
+   				local[ prop.idx ] = value;
+   				return this[ fn ]( local );
+   			};
+   		} );
+   	} );
+
+   	// Add cssHook and .fx.step function for each named hook.
+   	// accept a space separated string of properties
+   	color.hook = function( hook ) {
+   		var hooks = hook.split( " " );
+   		each( hooks, function( i, hook ) {
+   			jQuery.cssHooks[ hook ] = {
+   				set: function( elem, value ) {
+   					var parsed, curElem,
+   						backgroundColor = "";
+
+   					if ( value !== "transparent" && ( jQuery.type( value ) !== "string" ||
+   							( parsed = stringParse( value ) ) ) ) {
+   						value = color( parsed || value );
+   						if ( !support.rgba && value._rgba[ 3 ] !== 1 ) {
+   							curElem = hook === "backgroundColor" ? elem.parentNode : elem;
+   							while (
+   								( backgroundColor === "" || backgroundColor === "transparent" ) &&
+   								curElem && curElem.style
+   							) {
+   								try {
+   									backgroundColor = jQuery.css( curElem, "backgroundColor" );
+   									curElem = curElem.parentNode;
+   								} catch ( e ) {
+   								}
+   							}
+
+   							value = value.blend( backgroundColor && backgroundColor !== "transparent" ?
+   								backgroundColor :
+   								"_default" );
+   						}
+
+   						value = value.toRgbaString();
+   					}
+   					try {
+   						elem.style[ hook ] = value;
+   					} catch ( e ) {
+
+   						// Wrapped to prevent IE from throwing errors on "invalid" values like
+   						// 'auto' or 'inherit'
+   					}
+   				}
+   			};
+   			jQuery.fx.step[ hook ] = function( fx ) {
+   				if ( !fx.colorInit ) {
+   					fx.start = color( fx.elem, hook );
+   					fx.end = color( fx.end );
+   					fx.colorInit = true;
+   				}
+   				jQuery.cssHooks[ hook ].set( fx.elem, fx.start.transition( fx.end, fx.pos ) );
+   			};
+   		} );
+
+   	};
+
+   	color.hook( stepHooks );
+
+   	jQuery.cssHooks.borderColor = {
+   		expand: function( value ) {
+   			var expanded = {};
+
+   			each( [ "Top", "Right", "Bottom", "Left" ], function( i, part ) {
+   				expanded[ "border" + part + "Color" ] = value;
+   			} );
+   			return expanded;
+   		}
+   	};
+
+   	// Basic color names only.
+   	// Usage of any of the other color names requires adding yourself or including
+   	// jquery.color.svg-names.js.
+   	colors = jQuery.Color.names = {
+
+   		// 4.1. Basic color keywords
+   		aqua: "#00ffff",
+   		black: "#000000",
+   		blue: "#0000ff",
+   		fuchsia: "#ff00ff",
+   		gray: "#808080",
+   		green: "#008000",
+   		lime: "#00ff00",
+   		maroon: "#800000",
+   		navy: "#000080",
+   		olive: "#808000",
+   		purple: "#800080",
+   		red: "#ff0000",
+   		silver: "#c0c0c0",
+   		teal: "#008080",
+   		white: "#ffffff",
+   		yellow: "#ffff00",
+
+   		// 4.2.3. "transparent" color keyword
+   		transparent: [ null, null, null, 0 ],
+
+   		_default: "#ffffff"
+   	};
+
+  })(jQuery),
+
+  /******************************************************************************/
+  /****************************** CLASS ANIMATIONS ******************************/
+  /******************************************************************************/
+  ( function() {
+
+   var classAnimationActions = [ "add", "remove", "toggle" ],
+   shorthandStyles = {
+     border: 1,
+     borderBottom: 1,
+     borderColor: 1,
+     borderLeft: 1,
+     borderRight: 1,
+     borderTop: 1,
+     borderWidth: 1,
+     margin: 1,
+     padding: 1
+   };
+
+   $.each(
+     [ "borderLeftStyle", "borderRightStyle", "borderBottomStyle", "borderTopStyle" ],
+     function( _, prop ) {
+       $.fx.step[ prop ] = function( fx ) {
+         if ( fx.end !== "none" && !fx.setAttr || fx.pos === 1 && !fx.setAttr ) {
+           jQuery.style( fx.elem, prop, fx.end );
+           fx.setAttr = true;
+         }
+       };
+     }
+   );
+
+   function getElementStyles( elem ) {
+     var key, len,
+       style = elem.ownerDocument.defaultView ?
+         elem.ownerDocument.defaultView.getComputedStyle( elem, null ) :
+         elem.currentStyle,
+       styles = {};
+
+     if ( style && style.length && style[ 0 ] && style[ style[ 0 ] ] ) {
+       len = style.length;
+       while ( len-- ) {
+         key = style[ len ];
+         if ( typeof style[ key ] === "string" ) {
+           styles[ $.camelCase( key ) ] = style[ key ];
+         }
+       }
+
+     // Support: Opera, IE <9
+     } else {
+       for ( key in style ) {
+         if ( typeof style[ key ] === "string" ) {
+           styles[ key ] = style[ key ];
+         }
+       }
+     }
+
+     return styles;
+   }
+
+   function styleDifference( oldStyle, newStyle ) {
+     var diff = {},
+       name, value;
+
+     for ( name in newStyle ) {
+       value = newStyle[ name ];
+       if ( oldStyle[ name ] !== value ) {
+         if ( !shorthandStyles[ name ] ) {
+           if ( $.fx.step[ name ] || !isNaN( parseFloat( value ) ) ) {
+             diff[ name ] = value;
+           }
+         }
+       }
+     }
+
+     return diff;
+   }
+
+   // Support: jQuery <1.8
+   if ( !$.fn.addBack ) {
+     $.fn.addBack = function( selector ) {
+       return this.add( selector == null ?
+         this.prevObject : this.prevObject.filter( selector )
+       );
+     };
+   }
+
+   $.effects.animateClass = function( value, duration, easing, callback ) {
+     var o = $.speed( duration, easing, callback );
+
+     return this.queue( function() {
+       var animated = $( this ),
+         baseClass = animated.attr( "class" ) || "",
+         applyClassChange,
+         allAnimations = o.children ? animated.find( "*" ).addBack() : animated;
+
+       // Map the animated objects to store the original styles.
+       allAnimations = allAnimations.map( function() {
+         var el = $( this );
+         return {
+           el: el,
+           start: getElementStyles( this )
+         };
+       } );
+
+       // Apply class change
+       applyClassChange = function() {
+         $.each( classAnimationActions, function( i, action ) {
+           if ( value[ action ] ) {
+             animated[ action + "Class" ]( value[ action ] );
+           }
+         } );
+       };
+       applyClassChange();
+
+       // Map all animated objects again - calculate new styles and diff
+       allAnimations = allAnimations.map( function() {
+         this.end = getElementStyles( this.el[ 0 ] );
+         this.diff = styleDifference( this.start, this.end );
+         return this;
+       } );
+
+       // Apply original class
+       animated.attr( "class", baseClass );
+
+       // Map all animated objects again - this time collecting a promise
+       allAnimations = allAnimations.map( function() {
+         var styleInfo = this,
+           dfd = $.Deferred(),
+           opts = $.extend( {}, o, {
+             queue: false,
+             complete: function() {
+               dfd.resolve( styleInfo );
+             }
+           } );
+
+         this.el.animate( this.diff, opts );
+         return dfd.promise();
+       } );
+
+       // Once all animations have completed:
+       $.when.apply( $, allAnimations.get() ).done( function() {
+
+         // Set the final class
+         applyClassChange();
+
+         // For each animated element,
+         // clear all css properties that were animated
+         $.each( arguments, function() {
+           var el = this.el;
+           $.each( this.diff, function( key ) {
+             el.css( key, "" );
+           } );
+         } );
+
+         // This is guarnteed to be there if you use jQuery.speed()
+         // it also handles dequeuing the next anim...
+         o.complete.call( animated[ 0 ] );
+       } );
+     } );
+   };
+
+   $.fn.extend( {
+     addClass: ( function( orig ) {
+       return function( classNames, speed, easing, callback ) {
+         return speed ?
+           $.effects.animateClass.call( this,
+             { add: classNames }, speed, easing, callback ) :
+           orig.apply( this, arguments );
+       };
+     } )( $.fn.addClass ),
+
+     removeClass: ( function( orig ) {
+       return function( classNames, speed, easing, callback ) {
+         return arguments.length > 1 ?
+           $.effects.animateClass.call( this,
+             { remove: classNames }, speed, easing, callback ) :
+           orig.apply( this, arguments );
+       };
+     } )( $.fn.removeClass ),
+
+     toggleClass: ( function( orig ) {
+       return function( classNames, force, speed, easing, callback ) {
+         if ( typeof force === "boolean" || force === undefined ) {
+           if ( !speed ) {
+
+             // Without speed parameter
+             return orig.apply( this, arguments );
+           } else {
+             return $.effects.animateClass.call( this,
+               ( force ? { add: classNames } : { remove: classNames } ),
+               speed, easing, callback );
+           }
+         } else {
+
+           // Without force parameter
+           return $.effects.animateClass.call( this,
+             { toggle: classNames }, force, speed, easing );
+         }
+       };
+     } )( $.fn.toggleClass ),
+
+     switchClass: function( remove, add, speed, easing, callback ) {
+       return $.effects.animateClass.call( this, {
+         add: add,
+         remove: remove
+       }, speed, easing, callback );
+     }
+   } );
+
+  } )();
+
+  /******************************************************************************/
+  /*********************************** EFFECTS **********************************/
+  /******************************************************************************/
+
+  ( function() {
+
+   if ( $.expr && $.expr.filters && $.expr.filters.animated ) {
+     $.expr.filters.animated = ( function( orig ) {
+       return function( elem ) {
+         return !!$( elem ).data( dataSpaceAnimated ) || orig( elem );
+       };
+     } )( $.expr.filters.animated );
+   }
+
+   if ( $.uiBackCompat !== false ) {
+     $.extend( $.effects, {
+
+       // Saves a set of properties in a data storage
+       save: function( element, set ) {
+         var i = 0, length = set.length;
+         for ( ; i < length; i++ ) {
+           if ( set[ i ] !== null ) {
+             element.data( dataSpace + set[ i ], element[ 0 ].style[ set[ i ] ] );
+           }
+         }
+       },
+
+       // Restores a set of previously saved properties from a data storage
+       restore: function( element, set ) {
+         var val, i = 0, length = set.length;
+         for ( ; i < length; i++ ) {
+           if ( set[ i ] !== null ) {
+             val = element.data( dataSpace + set[ i ] );
+             element.css( set[ i ], val );
+           }
+         }
+       },
+
+       setMode: function( el, mode ) {
+         if ( mode === "toggle" ) {
+           mode = el.is( ":hidden" ) ? "show" : "hide";
+         }
+         return mode;
+       },
+
+       // Wraps the element around a wrapper that copies position properties
+       createWrapper: function( element ) {
+
+         // If the element is already wrapped, return it
+         if ( element.parent().is( ".ui-effects-wrapper" ) ) {
+           return element.parent();
+         }
+
+         // Wrap the element
+         var props = {
+             width: element.outerWidth( true ),
+             height: element.outerHeight( true ),
+             "float": element.css( "float" )
+           },
+           wrapper = $( "<div></div>" )
+             .addClass( "ui-effects-wrapper" )
+             .css( {
+               fontSize: "100%",
+               background: "transparent",
+               border: "none",
+               margin: 0,
+               padding: 0
+             } ),
+
+           // Store the size in case width/height are defined in % - Fixes #5245
+           size = {
+             width: element.width(),
+             height: element.height()
+           },
+           active = document.activeElement;
+
+         // Support: Firefox
+         // Firefox incorrectly exposes anonymous content
+         // https://bugzilla.mozilla.org/show_bug.cgi?id=561664
+         try {
+           active.id;
+         } catch ( e ) {
+           active = document.body;
+         }
+
+         element.wrap( wrapper );
+
+         // Fixes #7595 - Elements lose focus when wrapped.
+         if ( element[ 0 ] === active || $.contains( element[ 0 ], active ) ) {
+           $( active ).trigger( "focus" );
+         }
+
+         // Hotfix for jQuery 1.4 since some change in wrap() seems to actually
+         // lose the reference to the wrapped element
+         wrapper = element.parent();
+
+         // Transfer positioning properties to the wrapper
+         if ( element.css( "position" ) === "static" ) {
+           wrapper.css( { position: "relative" } );
+           element.css( { position: "relative" } );
+         } else {
+           $.extend( props, {
+             position: element.css( "position" ),
+             zIndex: element.css( "z-index" )
+           } );
+           $.each( [ "top", "left", "bottom", "right" ], function( i, pos ) {
+             props[ pos ] = element.css( pos );
+             if ( isNaN( parseInt( props[ pos ], 10 ) ) ) {
+               props[ pos ] = "auto";
+             }
+           } );
+           element.css( {
+             position: "relative",
+             top: 0,
+             left: 0,
+             right: "auto",
+             bottom: "auto"
+           } );
+         }
+         element.css( size );
+
+         return wrapper.css( props ).show();
+       },
+
+       removeWrapper: function( element ) {
+         var active = document.activeElement;
+
+         if ( element.parent().is( ".ui-effects-wrapper" ) ) {
+           element.parent().replaceWith( element );
+
+           // Fixes #7595 - Elements lose focus when wrapped.
+           if ( element[ 0 ] === active || $.contains( element[ 0 ], active ) ) {
+             $( active ).trigger( "focus" );
+           }
+         }
+
+         return element;
+       }
+     } );
+   }
+
+   $.extend( $.effects, {
+     version: "1.12.1",
+
+     define: function( name, mode, effect ) {
+       if ( !effect ) {
+         effect = mode;
+         mode = "effect";
+       }
+
+       $.effects.effect[ name ] = effect;
+       $.effects.effect[ name ].mode = mode;
+
+       return effect;
+     },
+
+     scaledDimensions: function( element, percent, direction ) {
+       if ( percent === 0 ) {
+         return {
+           height: 0,
+           width: 0,
+           outerHeight: 0,
+           outerWidth: 0
+         };
+       }
+
+       var x = direction !== "horizontal" ? ( ( percent || 100 ) / 100 ) : 1,
+         y = direction !== "vertical" ? ( ( percent || 100 ) / 100 ) : 1;
+
+       return {
+         height: element.height() * y,
+         width: element.width() * x,
+         outerHeight: element.outerHeight() * y,
+         outerWidth: element.outerWidth() * x
+       };
+
+     },
+
+     clipToBox: function( animation ) {
+       return {
+         width: animation.clip.right - animation.clip.left,
+         height: animation.clip.bottom - animation.clip.top,
+         left: animation.clip.left,
+         top: animation.clip.top
+       };
+     },
+
+     // Injects recently queued functions to be first in line (after "inprogress")
+     unshift: function( element, queueLength, count ) {
+       var queue = element.queue();
+
+       if ( queueLength > 1 ) {
+         queue.splice.apply( queue,
+           [ 1, 0 ].concat( queue.splice( queueLength, count ) ) );
+       }
+       element.dequeue();
+     },
+
+     saveStyle: function( element ) {
+       element.data( dataSpaceStyle, element[ 0 ].style.cssText );
+     },
+
+     restoreStyle: function( element ) {
+       element[ 0 ].style.cssText = element.data( dataSpaceStyle ) || "";
+       element.removeData( dataSpaceStyle );
+     },
+
+     mode: function( element, mode ) {
+       var hidden = element.is( ":hidden" );
+
+       if ( mode === "toggle" ) {
+         mode = hidden ? "show" : "hide";
+       }
+       if ( hidden ? mode === "hide" : mode === "show" ) {
+         mode = "none";
+       }
+       return mode;
+     },
+
+     // Translates a [top,left] array into a baseline value
+     getBaseline: function( origin, original ) {
+       var y, x;
+
+       switch ( origin[ 0 ] ) {
+       case "top":
+         y = 0;
+         break;
+       case "middle":
+         y = 0.5;
+         break;
+       case "bottom":
+         y = 1;
+         break;
+       default:
+         y = origin[ 0 ] / original.height;
+       }
+
+       switch ( origin[ 1 ] ) {
+       case "left":
+         x = 0;
+         break;
+       case "center":
+         x = 0.5;
+         break;
+       case "right":
+         x = 1;
+         break;
+       default:
+         x = origin[ 1 ] / original.width;
+       }
+
+       return {
+         x: x,
+         y: y
+       };
+     },
+
+     // Creates a placeholder element so that the original element can be made absolute
+     createPlaceholder: function( element ) {
+       var placeholder,
+         cssPosition = element.css( "position" ),
+         position = element.position();
+
+       // Lock in margins first to account for form elements, which
+       // will change margin if you explicitly set height
+       // see: http://jsfiddle.net/JZSMt/3/ https://bugs.webkit.org/show_bug.cgi?id=107380
+       // Support: Safari
+       element.css( {
+         marginTop: element.css( "marginTop" ),
+         marginBottom: element.css( "marginBottom" ),
+         marginLeft: element.css( "marginLeft" ),
+         marginRight: element.css( "marginRight" )
+       } )
+       .outerWidth( element.outerWidth() )
+       .outerHeight( element.outerHeight() );
+
+       if ( /^(static|relative)/.test( cssPosition ) ) {
+         cssPosition = "absolute";
+
+         placeholder = $( "<" + element[ 0 ].nodeName + ">" ).insertAfter( element ).css( {
+
+           // Convert inline to inline block to account for inline elements
+           // that turn to inline block based on content (like img)
+           display: /^(inline|ruby)/.test( element.css( "display" ) ) ?
+             "inline-block" :
+             "block",
+           visibility: "hidden",
+
+           // Margins need to be set to account for margin collapse
+           marginTop: element.css( "marginTop" ),
+           marginBottom: element.css( "marginBottom" ),
+           marginLeft: element.css( "marginLeft" ),
+           marginRight: element.css( "marginRight" ),
+           "float": element.css( "float" )
+         } )
+         .outerWidth( element.outerWidth() )
+         .outerHeight( element.outerHeight() )
+         .addClass( "ui-effects-placeholder" );
+
+         element.data( dataSpace + "placeholder", placeholder );
+       }
+
+       element.css( {
+         position: cssPosition,
+         left: position.left,
+         top: position.top
+       } );
+
+       return placeholder;
+     },
+
+     removePlaceholder: function( element ) {
+       var dataKey = dataSpace + "placeholder",
+           placeholder = element.data( dataKey );
+
+       if ( placeholder ) {
+         placeholder.remove();
+         element.removeData( dataKey );
+       }
+     },
+
+     // Removes a placeholder if it exists and restores
+     // properties that were modified during placeholder creation
+     cleanUp: function( element ) {
+       $.effects.restoreStyle( element );
+       $.effects.removePlaceholder( element );
+     },
+
+     setTransition: function( element, list, factor, value ) {
+       value = value || {};
+       $.each( list, function( i, x ) {
+         var unit = element.cssUnit( x );
+         if ( unit[ 0 ] > 0 ) {
+           value[ x ] = unit[ 0 ] * factor + unit[ 1 ];
+         }
+       } );
+       return value;
+     }
+   } );
+
+   // Return an effect options object for the given parameters:
+   function _normalizeArguments( effect, options, speed, callback ) {
+
+     // Allow passing all options as the first parameter
+     if ( $.isPlainObject( effect ) ) {
+       options = effect;
+       effect = effect.effect;
+     }
+
+     // Convert to an object
+     effect = { effect: effect };
+
+     // Catch (effect, null, ...)
+     if ( options == null ) {
+       options = {};
+     }
+
+     // Catch (effect, callback)
+     if ( $.isFunction( options ) ) {
+       callback = options;
+       speed = null;
+       options = {};
+     }
+
+     // Catch (effect, speed, ?)
+     if ( typeof options === "number" || $.fx.speeds[ options ] ) {
+       callback = speed;
+       speed = options;
+       options = {};
+     }
+
+     // Catch (effect, options, callback)
+     if ( $.isFunction( speed ) ) {
+       callback = speed;
+       speed = null;
+     }
+
+     // Add options to effect
+     if ( options ) {
+       $.extend( effect, options );
+     }
+
+     speed = speed || options.duration;
+     effect.duration = $.fx.off ? 0 :
+       typeof speed === "number" ? speed :
+       speed in $.fx.speeds ? $.fx.speeds[ speed ] :
+       $.fx.speeds._default;
+
+     effect.complete = callback || options.complete;
+
+     return effect;
+   }
+
+   function standardAnimationOption( option ) {
+
+     // Valid standard speeds (nothing, number, named speed)
+     if ( !option || typeof option === "number" || $.fx.speeds[ option ] ) {
+       return true;
+     }
+
+     // Invalid strings - treat as "normal" speed
+     if ( typeof option === "string" && !$.effects.effect[ option ] ) {
+       return true;
+     }
+
+     // Complete callback
+     if ( $.isFunction( option ) ) {
+       return true;
+     }
+
+     // Options hash (but not naming an effect)
+     if ( typeof option === "object" && !option.effect ) {
+       return true;
+     }
+
+     // Didn't match any standard API
+     return false;
+   }
+
+   $.fn.extend( {
+     effect: function( /* effect, options, speed, callback */ ) {
+       var args = _normalizeArguments.apply( this, arguments ),
+         effectMethod = $.effects.effect[ args.effect ],
+         defaultMode = effectMethod.mode,
+         queue = args.queue,
+         queueName = queue || "fx",
+         complete = args.complete,
+         mode = args.mode,
+         modes = [],
+         prefilter = function( next ) {
+           var el = $( this ),
+             normalizedMode = $.effects.mode( el, mode ) || defaultMode;
+
+           // Sentinel for duck-punching the :animated psuedo-selector
+           el.data( dataSpaceAnimated, true );
+
+           // Save effect mode for later use,
+           // we can't just call $.effects.mode again later,
+           // as the .show() below destroys the initial state
+           modes.push( normalizedMode );
+
+           // See $.uiBackCompat inside of run() for removal of defaultMode in 1.13
+           if ( defaultMode && ( normalizedMode === "show" ||
+               ( normalizedMode === defaultMode && normalizedMode === "hide" ) ) ) {
+             el.show();
+           }
+
+           if ( !defaultMode || normalizedMode !== "none" ) {
+             $.effects.saveStyle( el );
+           }
+
+           if ( $.isFunction( next ) ) {
+             next();
+           }
+         };
+
+       if ( $.fx.off || !effectMethod ) {
+
+         // Delegate to the original method (e.g., .show()) if possible
+         if ( mode ) {
+           return this[ mode ]( args.duration, complete );
+         } else {
+           return this.each( function() {
+             if ( complete ) {
+               complete.call( this );
+             }
+           } );
+         }
+       }
+
+       function run( next ) {
+         var elem = $( this );
+
+         function cleanup() {
+           elem.removeData( dataSpaceAnimated );
+
+           $.effects.cleanUp( elem );
+
+           if ( args.mode === "hide" ) {
+             elem.hide();
+           }
+
+           done();
+         }
+
+         function done() {
+           if ( $.isFunction( complete ) ) {
+             complete.call( elem[ 0 ] );
+           }
+
+           if ( $.isFunction( next ) ) {
+             next();
+           }
+         }
+
+         // Override mode option on a per element basis,
+         // as toggle can be either show or hide depending on element state
+         args.mode = modes.shift();
+
+         if ( $.uiBackCompat !== false && !defaultMode ) {
+           if ( elem.is( ":hidden" ) ? mode === "hide" : mode === "show" ) {
+
+             // Call the core method to track "olddisplay" properly
+             elem[ mode ]();
+             done();
+           } else {
+             effectMethod.call( elem[ 0 ], args, done );
+           }
+         } else {
+           if ( args.mode === "none" ) {
+
+             // Call the core method to track "olddisplay" properly
+             elem[ mode ]();
+             done();
+           } else {
+             effectMethod.call( elem[ 0 ], args, cleanup );
+           }
+         }
+       }
+
+       // Run prefilter on all elements first to ensure that
+       // any showing or hiding happens before placeholder creation,
+       // which ensures that any layout changes are correctly captured.
+       return queue === false ?
+         this.each( prefilter ).each( run ) :
+         this.queue( queueName, prefilter ).queue( queueName, run );
+     },
+
+     show: ( function( orig ) {
+       return function( option ) {
+         if ( standardAnimationOption( option ) ) {
+           return orig.apply( this, arguments );
+         } else {
+           var args = _normalizeArguments.apply( this, arguments );
+           args.mode = "show";
+           return this.effect.call( this, args );
+         }
+       };
+     } )( $.fn.show ),
+
+     hide: ( function( orig ) {
+       return function( option ) {
+         if ( standardAnimationOption( option ) ) {
+           return orig.apply( this, arguments );
+         } else {
+           var args = _normalizeArguments.apply( this, arguments );
+           args.mode = "hide";
+           return this.effect.call( this, args );
+         }
+       };
+     } )( $.fn.hide ),
+
+     toggle: ( function( orig ) {
+       return function( option ) {
+         if ( standardAnimationOption( option ) || typeof option === "boolean" ) {
+           return orig.apply( this, arguments );
+         } else {
+           var args = _normalizeArguments.apply( this, arguments );
+           args.mode = "toggle";
+           return this.effect.call( this, args );
+         }
+       };
+     } )( $.fn.toggle ),
+
+     cssUnit: function( key ) {
+       var style = this.css( key ),
+         val = [];
+
+       $.each( [ "em", "px", "%", "pt" ], function( i, unit ) {
+         if ( style.indexOf( unit ) > 0 ) {
+           val = [ parseFloat( style ), unit ];
+         }
+       } );
+       return val;
+     },
+
+     cssClip: function( clipObj ) {
+       if ( clipObj ) {
+         return this.css( "clip", "rect(" + clipObj.top + "px " + clipObj.right + "px " +
+           clipObj.bottom + "px " + clipObj.left + "px)" );
+       }
+       return parseClip( this.css( "clip" ), this );
+     },
+
+     transfer: function( options, done ) {
+       var element = $( this ),
+         target = $( options.to ),
+         targetFixed = target.css( "position" ) === "fixed",
+         body = $( "body" ),
+         fixTop = targetFixed ? body.scrollTop() : 0,
+         fixLeft = targetFixed ? body.scrollLeft() : 0,
+         endPosition = target.offset(),
+         animation = {
+           top: endPosition.top - fixTop,
+           left: endPosition.left - fixLeft,
+           height: target.innerHeight(),
+           width: target.innerWidth()
+         },
+         startPosition = element.offset(),
+         transfer = $( "<div class='ui-effects-transfer'></div>" )
+           .appendTo( "body" )
+           .addClass( options.className )
+           .css( {
+             top: startPosition.top - fixTop,
+             left: startPosition.left - fixLeft,
+             height: element.innerHeight(),
+             width: element.innerWidth(),
+             position: targetFixed ? "fixed" : "absolute"
+           } )
+           .animate( animation, options.duration, options.easing, function() {
+             transfer.remove();
+             if ( $.isFunction( done ) ) {
+               done();
+             }
+           } );
+     }
+   } );
+
+   function parseClip( str, element ) {
+       var outerWidth = element.outerWidth(),
+         outerHeight = element.outerHeight(),
+         clipRegex = /^rect\((-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto),?\s*(-?\d*\.?\d*px|-?\d+%|auto)\)$/,
+         values = clipRegex.exec( str ) || [ "", 0, outerWidth, outerHeight, 0 ];
+
+       return {
+         top: parseFloat( values[ 1 ] ) || 0,
+         right: values[ 2 ] === "auto" ? outerWidth : parseFloat( values[ 2 ] ),
+         bottom: values[ 3 ] === "auto" ? outerHeight : parseFloat( values[ 3 ] ),
+         left: parseFloat( values[ 4 ] ) || 0
+       };
+   }
+
+   $.fx.step.clip = function( fx ) {
+     if ( !fx.clipInit ) {
+       fx.start = $( fx.elem ).cssClip();
+       if ( typeof fx.end === "string" ) {
+         fx.end = parseClip( fx.end, fx.elem );
+       }
+       fx.clipInit = true;
+     }
+
+     $( fx.elem ).cssClip( {
+       top: fx.pos * ( fx.end.top - fx.start.top ) + fx.start.top,
+       right: fx.pos * ( fx.end.right - fx.start.right ) + fx.start.right,
+       bottom: fx.pos * ( fx.end.bottom - fx.start.bottom ) + fx.start.bottom,
+       left: fx.pos * ( fx.end.left - fx.start.left ) + fx.start.left
+     } );
+   };
+
+  } )();
+
+  /******************************************************************************/
+  /*********************************** EASING ***********************************/
+  /******************************************************************************/
+
+  ( function() {
+
+   // Based on easing equations from Robert Penner (http://www.robertpenner.com/easing)
+
+   var baseEasings = {};
+
+   $.each( [ "Quad", "Cubic", "Quart", "Quint", "Expo" ], function( i, name ) {
+     baseEasings[ name ] = function( p ) {
+       return Math.pow( p, i + 2 );
+     };
+   } );
+
+   $.extend( baseEasings, {
+     Sine: function( p ) {
+       return 1 - Math.cos( p * Math.PI / 2 );
+     },
+     Circ: function( p ) {
+       return 1 - Math.sqrt( 1 - p * p );
+     },
+     Elastic: function( p ) {
+       return p === 0 || p === 1 ? p :
+         -Math.pow( 2, 8 * ( p - 1 ) ) * Math.sin( ( ( p - 1 ) * 80 - 7.5 ) * Math.PI / 15 );
+     },
+     Back: function( p ) {
+       return p * p * ( 3 * p - 2 );
+     },
+     Bounce: function( p ) {
+       var pow2,
+         bounce = 4;
+
+       while ( p < ( ( pow2 = Math.pow( 2, --bounce ) ) - 1 ) / 11 ) {}
+       return 1 / Math.pow( 4, 3 - bounce ) - 7.5625 * Math.pow( ( pow2 * 3 - 2 ) / 22 - p, 2 );
+     }
+   } );
+
+   $.each( baseEasings, function( name, easeIn ) {
+     $.easing[ "easeIn" + name ] = easeIn;
+     $.easing[ "easeOut" + name ] = function( p ) {
+       return 1 - easeIn( 1 - p );
+     };
+     $.easing[ "easeInOut" + name ] = function( p ) {
+       return p < 0.5 ?
+         easeIn( p * 2 ) / 2 :
+         1 - easeIn( p * -2 + 2 ) / 2;
+     };
+   } );
+
+  } )();
+
+  var effect = $.effects;
+   // Eth -> Self explanatory, but variables won't match so don't run until replaced
     e.effects.define("blind", "hide", function(t, n) {
         var r = {
             up: ["bottom", "top"],
@@ -12948,6 +13551,9 @@ function( factory ) {
         e(this).transfer(t, n)
     })
 }),
+// === End jQueryUI ===
+
+// === jStorage ===
 function() {
     function e() {
         var e = !1;
@@ -13341,6 +13947,8 @@ function() {
     },
     e()
 }();
+// === End jStorage ===
+
 var levenshteinDistance = function(e, t) {
     var n = []
       , r = e.length
@@ -13371,6 +13979,8 @@ var levenshteinDistance = function(e, t) {
         }
     return n[r][i]
 };
+
+// === AutoSize ===
 !function(e) {
     "function" == typeof define && define.amd ? define(["jquery"], e) : e(window.jQuery || window.$)
 }(function(e) {
@@ -13472,6 +14082,9 @@ var levenshteinDistance = function(e, t) {
         })
     }
 }),
+// === End AutoSize ===
+
+// === TimeAgo ===
 function(e) {
     "function" == typeof define && define.amd ? define(["jquery"], e) : e("object" == typeof module && "object" == typeof module.exports ? require("jquery") : jQuery)
 }(function(e) {
@@ -13617,6 +14230,8 @@ function(e) {
     document.createElement("abbr"),
     document.createElement("time")
 });
+
+// WanaKana
 var wanakana, __indexOf = [].indexOf || function(e) {
     for (var t = 0, n = this.length; t < n; t++)
         if (t in this && this[t] === e)
@@ -14414,6 +15029,8 @@ wanakana.J_to_R = {
     "\u3093\u3086": "n'yu",
     "\u3093\u3088": "n'yo"
 },
+
+// === Honeybadger v0.5.0 ===
 function(e, t) {
     "use strict";
     var n = {};
@@ -14818,6 +15435,8 @@ function() {
     })
 }
 .call(this),
+
+// WaniKani
 function() {
     null == window.WaniKani && (window.WaniKani = {}),
     WaniKani.exceptions = {
@@ -14840,6 +15459,7 @@ function() {
     }
 }
 .call(this),
+// idleTime
 function() {
     var e;
     this.idleTime = {},
@@ -14874,6 +15494,7 @@ function() {
     }
 }
 .call(this),
+// Notes
 function() {
     this.Notes = {
         add: function(e, t, n, r, i) {
@@ -14995,6 +15616,7 @@ function() {
     }
 }
 .call(this),
+// UserSynonyms
 function() {
     this.UserSynonyms = {},
     this.UserSynonyms.load = function(e, t, n, r) {
@@ -15136,6 +15758,7 @@ function() {
     }
 }
 .call(this),
+// WaniKani.iosPatch
 function() {
     null == window.WaniKani && (window.WaniKani = {}),
     WaniKani.iosPatch = {
@@ -15153,6 +15776,7 @@ function() {
     })
 }
 .call(this),
+// additionalContent
 function() {
     var e, t;
     this.additionalContent = {},
@@ -15430,6 +16054,7 @@ function() {
     }
 }
 .call(this),
+// answerChecker
 function() {
     this.answerChecker = {},
     this.answerChecker.evaluate = function(e, t) {
@@ -15533,6 +16158,7 @@ function() {
     }
 }
 .call(this),
+// hotKeys
 function() {
     this.hotKeys = {},
     this.hotKeys.keyBinds = function() {
@@ -15612,6 +16238,7 @@ function() {
     }
 }
 .call(this),
+// kanaChart
 function() {
     this.kanaChart = {},
     this.kanaChart.init = function() {
@@ -15632,6 +16259,7 @@ function() {
     }
 }
 .call(this),
+// lastItems
 function() {
     this.lastItems = {},
     this.lastItems.addToList = function(e) {
@@ -15734,6 +16362,7 @@ function() {
     }
 }
 .call(this),
+// loadingScreen
 function() {
     this.loadingScreen = {},
     this.loadingScreen.remove = function() {
@@ -15741,6 +16370,7 @@ function() {
     }
 }
 .call(this),
+// popover
 function() {
     this.popover = {},
     this.popover.load = function() {
@@ -15792,6 +16422,7 @@ function() {
     }
 }
 .call(this),
+// Review Loop
 function() {
     var e;
     jQuery(function() {
@@ -16147,6 +16778,7 @@ function() {
     }
 }
 .call(this),
+// Srs
 function() {
     this.Srs = {},
     this.Srs.load = function(e, t) {
@@ -16196,6 +16828,7 @@ function() {
     }
 }
 .call(this),
+// Summary Page
 function() {
     var e;
     jQuery(function() {
@@ -16303,5 +16936,6 @@ function() {
     }
 }
 .call(this),
+// Empty Function
 function() {}
 .call(this);
