@@ -1,4 +1,4 @@
-//=== jQuery Core ===
+//=== jQuery Core v1.12.5-pre ===
 /*!
  * jQuery JavaScript Library v1.12.5-pre e09907ce152fb6ef7537a3733b1d65ead8ee6303
  * http://jquery.com/
@@ -35,7 +35,7 @@
 		factory( global );
 	}
 
-// Pass this if window is not defined yet
+	// Pass this if window is not defined yet
 }(typeof window !== "undefined" ? window : this, function( window, noGlobal ) {
 
   // Support: Firefox 18+
@@ -11555,7 +11555,7 @@ function($, undefined) {
 }(jQuery),
 // === End Rails ===
 
-// === jQueryUI Effects ===
+// === jQueryUI Effects v1.12.1===
 /*! jQuery UI - v1.12.1 - 2018-05-16
 * http://jqueryui.com
 * Includes: effect.js, effects/effect-blind.js, effects/effect-bounce.js, effects/effect-clip.js, effects/effect-drop.js, effects/effect-explode.js, effects/effect-fade.js, effects/effect-fold.js, effects/effect-highlight.js, effects/effect-puff.js, effects/effect-pulsate.js, effects/effect-scale.js, effects/effect-shake.js, effects/effect-size.js, effects/effect-slide.js, effects/effect-transfer.js
@@ -13200,356 +13200,955 @@ function( factory ) {
   } )();
 
   var effect = $.effects;
-   // Eth -> Self explanatory, but variables won't match so don't run until replaced
-    e.effects.define("blind", "hide", function(t, n) {
-        var r = {
-            up: ["bottom", "top"],
-            vertical: ["bottom", "top"],
-            down: ["top", "bottom"],
-            left: ["right", "left"],
-            horizontal: ["right", "left"],
-            right: ["left", "right"]
-        }
-          , i = e(this)
-          , a = t.direction || "up"
-          , o = i.cssClip()
-          , s = {
-            clip: e.extend({}, o)
-        }
-          , u = e.effects.createPlaceholder(i);
-        s.clip[r[a][0]] = s.clip[r[a][1]],
-        "show" === t.mode && (i.cssClip(s.clip),
-        u && u.css(e.effects.clipToBox(s)),
-        s.clip = o),
-        u && u.animate(e.effects.clipToBox(s), t.duration, t.easing),
-        i.animate(s, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    }),
-    e.effects.define("bounce", function(t, n) {
-        var r, i, a, o = e(this), s = t.mode, u = "hide" === s, c = "show" === s, l = t.direction || "up", d = t.distance, f = t.times || 5, p = 2 * f + (c || u ? 1 : 0), h = t.duration / p, m = t.easing, g = "up" === l || "down" === l ? "top" : "left", y = "up" === l || "left" === l, v = 0, b = o.queue().length;
-        for (e.effects.createPlaceholder(o),
-        a = o.css(g),
-        d || (d = o["top" === g ? "outerHeight" : "outerWidth"]() / 3),
-        c && (i = {
-            opacity: 1
-        },
-        i[g] = a,
-        o.css("opacity", 0).css(g, y ? 2 * -d : 2 * d).animate(i, h, m)),
-        u && (d /= Math.pow(2, f - 1)),
-        i = {},
-        i[g] = a; f > v; v++)
-            r = {},
-            r[g] = (y ? "-=" : "+=") + d,
-            o.animate(r, h, m).animate(i, h, m),
-            d = u ? 2 * d : d / 2;
-        u && (r = {
-            opacity: 0
-        },
-        r[g] = (y ? "-=" : "+=") + d,
-        o.animate(r, h, m)),
-        o.queue(n),
-        e.effects.unshift(o, b, p + 1)
-    }),
-    e.effects.define("clip", "hide", function(t, n) {
-        var r, i = {}, a = e(this), o = t.direction || "vertical", s = "both" === o, u = s || "horizontal" === o, c = s || "vertical" === o;
-        r = a.cssClip(),
-        i.clip = {
-            top: c ? (r.bottom - r.top) / 2 : r.top,
-            right: u ? (r.right - r.left) / 2 : r.right,
-            bottom: c ? (r.bottom - r.top) / 2 : r.bottom,
-            left: u ? (r.right - r.left) / 2 : r.left
-        },
-        e.effects.createPlaceholder(a),
-        "show" === t.mode && (a.cssClip(i.clip),
-        i.clip = r),
-        a.animate(i, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    }),
-    e.effects.define("drop", "hide", function(t, n) {
-        var r, i = e(this), a = t.mode, o = "show" === a, s = t.direction || "left", u = "up" === s || "down" === s ? "top" : "left", c = "up" === s || "left" === s ? "-=" : "+=", l = "+=" === c ? "-=" : "+=", d = {
-            opacity: 0
-        };
-        e.effects.createPlaceholder(i),
-        r = t.distance || i["top" === u ? "outerHeight" : "outerWidth"](!0) / 2,
-        d[u] = c + r,
-        o && (i.css(d),
-        d[u] = l + r,
-        d.opacity = 1),
-        i.animate(d, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    }),
-    e.effects.define("explode", "hide", function(t, n) {
-        function r() {
-            b.push(this),
-            b.length === d * f && i()
-        }
-        function i() {
-            p.css({
-                visibility: "visible"
-            }),
-            e(b).remove(),
-            n()
-        }
-        var a, o, s, u, c, l, d = t.pieces ? Math.round(Math.sqrt(t.pieces)) : 3, f = d, p = e(this), h = t.mode, m = "show" === h, g = p.show().css("visibility", "hidden").offset(), y = Math.ceil(p.outerWidth() / f), v = Math.ceil(p.outerHeight() / d), b = [];
-        for (a = 0; d > a; a++)
-            for (u = g.top + a * v,
-            l = a - (d - 1) / 2,
-            o = 0; f > o; o++)
-                s = g.left + o * y,
-                c = o - (f - 1) / 2,
-                p.clone().appendTo("body").wrap("<div></div>").css({
-                    position: "absolute",
-                    visibility: "visible",
-                    left: -o * y,
-                    top: -a * v
-                }).parent().addClass("ui-effects-explode").css({
-                    position: "absolute",
-                    overflow: "hidden",
-                    width: y,
-                    height: v,
-                    left: s + (m ? c * y : 0),
-                    top: u + (m ? l * v : 0),
-                    opacity: m ? 0 : 1
-                }).animate({
-                    left: s + (m ? 0 : c * y),
-                    top: u + (m ? 0 : l * v),
-                    opacity: m ? 1 : 0
-                }, t.duration || 500, t.easing, r)
-    }),
-    e.effects.define("fade", "toggle", function(t, n) {
-        var r = "show" === t.mode;
-        e(this).css("opacity", r ? 0 : 1).animate({
-            opacity: r ? 1 : 0
-        }, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    }),
-    e.effects.define("fold", "hide", function(t, n) {
-        var r = e(this)
-          , i = t.mode
-          , a = "show" === i
-          , o = "hide" === i
-          , s = t.size || 15
-          , u = /([0-9]+)%/.exec(s)
-          , c = !!t.horizFirst
-          , l = c ? ["right", "bottom"] : ["bottom", "right"]
-          , d = t.duration / 2
-          , f = e.effects.createPlaceholder(r)
-          , p = r.cssClip()
-          , h = {
-            clip: e.extend({}, p)
-        }
-          , m = {
-            clip: e.extend({}, p)
-        }
-          , g = [p[l[0]], p[l[1]]]
-          , y = r.queue().length;
-        u && (s = parseInt(u[1], 10) / 100 * g[o ? 0 : 1]),
-        h.clip[l[0]] = s,
-        m.clip[l[0]] = s,
-        m.clip[l[1]] = 0,
-        a && (r.cssClip(m.clip),
-        f && f.css(e.effects.clipToBox(m)),
-        m.clip = p),
-        r.queue(function(n) {
-            f && f.animate(e.effects.clipToBox(h), d, t.easing).animate(e.effects.clipToBox(m), d, t.easing),
-            n()
-        }).animate(h, d, t.easing).animate(m, d, t.easing).queue(n),
-        e.effects.unshift(r, y, 4)
-    }),
-    e.effects.define("highlight", "show", function(t, n) {
-        var r = e(this)
-          , i = {
-            backgroundColor: r.css("backgroundColor")
-        };
-        "hide" === t.mode && (i.opacity = 0),
-        e.effects.saveStyle(r),
-        r.css({
-            backgroundImage: "none",
-            backgroundColor: t.color || "#ffff99"
-        }).animate(i, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    }),
-    e.effects.define("size", function(t, n) {
-        var r, i, a, o = e(this), s = ["fontSize"], u = ["borderTopWidth", "borderBottomWidth", "paddingTop", "paddingBottom"], c = ["borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight"], l = t.mode, d = "effect" !== l, f = t.scale || "both", p = t.origin || ["middle", "center"], h = o.css("position"), m = o.position(), g = e.effects.scaledDimensions(o), y = t.from || g, v = t.to || e.effects.scaledDimensions(o, 0);
-        e.effects.createPlaceholder(o),
-        "show" === l && (a = y,
-        y = v,
-        v = a),
-        i = {
-            from: {
-                y: y.height / g.height,
-                x: y.width / g.width
-            },
-            to: {
-                y: v.height / g.height,
-                x: v.width / g.width
-            }
-        },
-        ("box" === f || "both" === f) && (i.from.y !== i.to.y && (y = e.effects.setTransition(o, u, i.from.y, y),
-        v = e.effects.setTransition(o, u, i.to.y, v)),
-        i.from.x !== i.to.x && (y = e.effects.setTransition(o, c, i.from.x, y),
-        v = e.effects.setTransition(o, c, i.to.x, v))),
-        ("content" === f || "both" === f) && i.from.y !== i.to.y && (y = e.effects.setTransition(o, s, i.from.y, y),
-        v = e.effects.setTransition(o, s, i.to.y, v)),
-        p && (r = e.effects.getBaseline(p, g),
-        y.top = (g.outerHeight - y.outerHeight) * r.y + m.top,
-        y.left = (g.outerWidth - y.outerWidth) * r.x + m.left,
-        v.top = (g.outerHeight - v.outerHeight) * r.y + m.top,
-        v.left = (g.outerWidth - v.outerWidth) * r.x + m.left),
-        o.css(y),
-        ("content" === f || "both" === f) && (u = u.concat(["marginTop", "marginBottom"]).concat(s),
-        c = c.concat(["marginLeft", "marginRight"]),
-        o.find("*[width]").each(function() {
-            var n = e(this)
-              , r = e.effects.scaledDimensions(n)
-              , a = {
-                height: r.height * i.from.y,
-                width: r.width * i.from.x,
-                outerHeight: r.outerHeight * i.from.y,
-                outerWidth: r.outerWidth * i.from.x
-            }
-              , o = {
-                height: r.height * i.to.y,
-                width: r.width * i.to.x,
-                outerHeight: r.height * i.to.y,
-                outerWidth: r.width * i.to.x
-            };
-            i.from.y !== i.to.y && (a = e.effects.setTransition(n, u, i.from.y, a),
-            o = e.effects.setTransition(n, u, i.to.y, o)),
-            i.from.x !== i.to.x && (a = e.effects.setTransition(n, c, i.from.x, a),
-            o = e.effects.setTransition(n, c, i.to.x, o)),
-            d && e.effects.saveStyle(n),
-            n.css(a),
-            n.animate(o, t.duration, t.easing, function() {
-                d && e.effects.restoreStyle(n)
-            })
-        })),
-        o.animate(v, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: function() {
-                var t = o.offset();
-                0 === v.opacity && o.css("opacity", y.opacity),
-                d || (o.css("position", "static" === h ? "relative" : h).offset(t),
-                e.effects.saveStyle(o)),
-                n()
-            }
-        })
-    }),
-    e.effects.define("scale", function(t, n) {
-        var r = e(this)
-          , i = t.mode
-          , a = parseInt(t.percent, 10) || (0 === parseInt(t.percent, 10) ? 0 : "effect" !== i ? 0 : 100)
-          , o = e.extend(!0, {
-            from: e.effects.scaledDimensions(r),
-            to: e.effects.scaledDimensions(r, a, t.direction || "both"),
-            origin: t.origin || ["middle", "center"]
-        }, t);
-        t.fade && (o.from.opacity = 1,
-        o.to.opacity = 0),
-        e.effects.effect.size.call(this, o, n)
-    }),
-    e.effects.define("puff", "hide", function(t, n) {
-        var r = e.extend(!0, {}, t, {
-            fade: !0,
-            percent: parseInt(t.percent, 10) || 150
-        });
-        e.effects.effect.scale.call(this, r, n)
-    }),
-    e.effects.define("pulsate", "show", function(t, n) {
-        var r = e(this)
-          , i = t.mode
-          , a = "show" === i
-          , o = "hide" === i
-          , s = a || o
-          , u = 2 * (t.times || 5) + (s ? 1 : 0)
-          , c = t.duration / u
-          , l = 0
-          , d = 1
-          , f = r.queue().length;
-        for ((a || !r.is(":visible")) && (r.css("opacity", 0).show(),
-        l = 1); u > d; d++)
-            r.animate({
-                opacity: l
-            }, c, t.easing),
-            l = 1 - l;
-        r.animate({
-            opacity: l
-        }, c, t.easing),
-        r.queue(n),
-        e.effects.unshift(r, f, u + 1)
-    }),
-    e.effects.define("shake", function(t, n) {
-        var r = 1
-          , i = e(this)
-          , a = t.direction || "left"
-          , o = t.distance || 20
-          , s = t.times || 3
-          , u = 2 * s + 1
-          , c = Math.round(t.duration / u)
-          , l = "up" === a || "down" === a ? "top" : "left"
-          , d = "up" === a || "left" === a
-          , f = {}
-          , p = {}
-          , h = {}
-          , m = i.queue().length;
-        for (e.effects.createPlaceholder(i),
-        f[l] = (d ? "-=" : "+=") + o,
-        p[l] = (d ? "+=" : "-=") + 2 * o,
-        h[l] = (d ? "-=" : "+=") + 2 * o,
-        i.animate(f, c, t.easing); s > r; r++)
-            i.animate(p, c, t.easing).animate(h, c, t.easing);
-        i.animate(p, c, t.easing).animate(f, c / 2, t.easing).queue(n),
-        e.effects.unshift(i, m, u + 1)
-    }),
-    e.effects.define("slide", "show", function(t, n) {
-        var r, i, a = e(this), o = {
-            up: ["bottom", "top"],
-            down: ["top", "bottom"],
-            left: ["right", "left"],
-            right: ["left", "right"]
-        }, s = t.mode, u = t.direction || "left", c = "up" === u || "down" === u ? "top" : "left", l = "up" === u || "left" === u, d = t.distance || a["top" === c ? "outerHeight" : "outerWidth"](!0), f = {};
-        e.effects.createPlaceholder(a),
-        r = a.cssClip(),
-        i = a.position()[c],
-        f[c] = (l ? -1 : 1) * d + i,
-        f.clip = a.cssClip(),
-        f.clip[o[u][1]] = f.clip[o[u][0]],
-        "show" === s && (a.cssClip(f.clip),
-        a.css(c, f[c]),
-        f.clip = r,
-        f[c] = i),
-        a.animate(f, {
-            queue: !1,
-            duration: t.duration,
-            easing: t.easing,
-            complete: n
-        })
-    });
-    !1 !== e.uiBackCompat && e.effects.define("transfer", function(t, n) {
-        e(this).transfer(t, n)
-    })
+	/*!
+	 * jQuery UI Effects Blind 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Blind Effect
+	//>>group: Effects
+	//>>description: Blinds the element.
+	//>>docs: http://api.jqueryui.com/blind-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectBlind = $.effects.define( "blind", "hide", function( options, done ) {
+		var map = {
+				up: [ "bottom", "top" ],
+				vertical: [ "bottom", "top" ],
+				down: [ "top", "bottom" ],
+				left: [ "right", "left" ],
+				horizontal: [ "right", "left" ],
+				right: [ "left", "right" ]
+			},
+			element = $( this ),
+			direction = options.direction || "up",
+			start = element.cssClip(),
+			animate = { clip: $.extend( {}, start ) },
+			placeholder = $.effects.createPlaceholder( element );
+
+		animate.clip[ map[ direction ][ 0 ] ] = animate.clip[ map[ direction ][ 1 ] ];
+
+		if ( options.mode === "show" ) {
+			element.cssClip( animate.clip );
+			if ( placeholder ) {
+				placeholder.css( $.effects.clipToBox( animate ) );
+			}
+
+			animate.clip = start;
+		}
+
+		if ( placeholder ) {
+			placeholder.animate( $.effects.clipToBox( animate ), options.duration, options.easing );
+		}
+
+		element.animate( animate, {
+			queue: false,
+			duration: options.duration,
+			easing: options.easing,
+			complete: done
+		} );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Bounce 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Bounce Effect
+	//>>group: Effects
+	//>>description: Bounces an element horizontally or vertically n times.
+	//>>docs: http://api.jqueryui.com/bounce-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectBounce = $.effects.define( "bounce", function( options, done ) {
+		var upAnim, downAnim, refValue,
+			element = $( this ),
+
+			// Defaults:
+			mode = options.mode,
+			hide = mode === "hide",
+			show = mode === "show",
+			direction = options.direction || "up",
+			distance = options.distance,
+			times = options.times || 5,
+
+			// Number of internal animations
+			anims = times * 2 + ( show || hide ? 1 : 0 ),
+			speed = options.duration / anims,
+			easing = options.easing,
+
+			// Utility:
+			ref = ( direction === "up" || direction === "down" ) ? "top" : "left",
+			motion = ( direction === "up" || direction === "left" ),
+			i = 0,
+
+			queuelen = element.queue().length;
+
+		$.effects.createPlaceholder( element );
+
+		refValue = element.css( ref );
+
+		// Default distance for the BIGGEST bounce is the outer Distance / 3
+		if ( !distance ) {
+			distance = element[ ref === "top" ? "outerHeight" : "outerWidth" ]() / 3;
+		}
+
+		if ( show ) {
+			downAnim = { opacity: 1 };
+			downAnim[ ref ] = refValue;
+
+			// If we are showing, force opacity 0 and set the initial position
+			// then do the "first" animation
+			element
+				.css( "opacity", 0 )
+				.css( ref, motion ? -distance * 2 : distance * 2 )
+				.animate( downAnim, speed, easing );
+		}
+
+		// Start at the smallest distance if we are hiding
+		if ( hide ) {
+			distance = distance / Math.pow( 2, times - 1 );
+		}
+
+		downAnim = {};
+		downAnim[ ref ] = refValue;
+
+		// Bounces up/down/left/right then back to 0 -- times * 2 animations happen here
+		for ( ; i < times; i++ ) {
+			upAnim = {};
+			upAnim[ ref ] = ( motion ? "-=" : "+=" ) + distance;
+
+			element
+				.animate( upAnim, speed, easing )
+				.animate( downAnim, speed, easing );
+
+			distance = hide ? distance * 2 : distance / 2;
+		}
+
+		// Last Bounce when Hiding
+		if ( hide ) {
+			upAnim = { opacity: 0 };
+			upAnim[ ref ] = ( motion ? "-=" : "+=" ) + distance;
+
+			element.animate( upAnim, speed, easing );
+		}
+
+		element.queue( done );
+
+		$.effects.unshift( element, queuelen, anims + 1 );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Clip 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Clip Effect
+	//>>group: Effects
+	//>>description: Clips the element on and off like an old TV.
+	//>>docs: http://api.jqueryui.com/clip-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectClip = $.effects.define( "clip", "hide", function( options, done ) {
+		var start,
+			animate = {},
+			element = $( this ),
+			direction = options.direction || "vertical",
+			both = direction === "both",
+			horizontal = both || direction === "horizontal",
+			vertical = both || direction === "vertical";
+
+		start = element.cssClip();
+		animate.clip = {
+			top: vertical ? ( start.bottom - start.top ) / 2 : start.top,
+			right: horizontal ? ( start.right - start.left ) / 2 : start.right,
+			bottom: vertical ? ( start.bottom - start.top ) / 2 : start.bottom,
+			left: horizontal ? ( start.right - start.left ) / 2 : start.left
+		};
+
+		$.effects.createPlaceholder( element );
+
+		if ( options.mode === "show" ) {
+			element.cssClip( animate.clip );
+			animate.clip = start;
+		}
+
+		element.animate( animate, {
+			queue: false,
+			duration: options.duration,
+			easing: options.easing,
+			complete: done
+		} );
+
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Drop 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Drop Effect
+	//>>group: Effects
+	//>>description: Moves an element in one direction and hides it at the same time.
+	//>>docs: http://api.jqueryui.com/drop-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectDrop = $.effects.define( "drop", "hide", function( options, done ) {
+
+		var distance,
+			element = $( this ),
+			mode = options.mode,
+			show = mode === "show",
+			direction = options.direction || "left",
+			ref = ( direction === "up" || direction === "down" ) ? "top" : "left",
+			motion = ( direction === "up" || direction === "left" ) ? "-=" : "+=",
+			oppositeMotion = ( motion === "+=" ) ? "-=" : "+=",
+			animation = {
+				opacity: 0
+			};
+
+		$.effects.createPlaceholder( element );
+
+		distance = options.distance ||
+			element[ ref === "top" ? "outerHeight" : "outerWidth" ]( true ) / 2;
+
+		animation[ ref ] = motion + distance;
+
+		if ( show ) {
+			element.css( animation );
+
+			animation[ ref ] = oppositeMotion + distance;
+			animation.opacity = 1;
+		}
+
+		// Animate
+		element.animate( animation, {
+			queue: false,
+			duration: options.duration,
+			easing: options.easing,
+			complete: done
+		} );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Explode 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Explode Effect
+	//>>group: Effects
+	// jscs:disable maximumLineLength
+	//>>description: Explodes an element in all directions into n pieces. Implodes an element to its original wholeness.
+	// jscs:enable maximumLineLength
+	//>>docs: http://api.jqueryui.com/explode-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectExplode = $.effects.define( "explode", "hide", function( options, done ) {
+
+		var i, j, left, top, mx, my,
+			rows = options.pieces ? Math.round( Math.sqrt( options.pieces ) ) : 3,
+			cells = rows,
+			element = $( this ),
+			mode = options.mode,
+			show = mode === "show",
+
+			// Show and then visibility:hidden the element before calculating offset
+			offset = element.show().css( "visibility", "hidden" ).offset(),
+
+			// Width and height of a piece
+			width = Math.ceil( element.outerWidth() / cells ),
+			height = Math.ceil( element.outerHeight() / rows ),
+			pieces = [];
+
+		// Children animate complete:
+		function childComplete() {
+			pieces.push( this );
+			if ( pieces.length === rows * cells ) {
+				animComplete();
+			}
+		}
+
+		// Clone the element for each row and cell.
+		for ( i = 0; i < rows; i++ ) { // ===>
+			top = offset.top + i * height;
+			my = i - ( rows - 1 ) / 2;
+
+			for ( j = 0; j < cells; j++ ) { // |||
+				left = offset.left + j * width;
+				mx = j - ( cells - 1 ) / 2;
+
+				// Create a clone of the now hidden main element that will be absolute positioned
+				// within a wrapper div off the -left and -top equal to size of our pieces
+				element
+					.clone()
+					.appendTo( "body" )
+					.wrap( "<div></div>" )
+					.css( {
+						position: "absolute",
+						visibility: "visible",
+						left: -j * width,
+						top: -i * height
+					} )
+
+					// Select the wrapper - make it overflow: hidden and absolute positioned based on
+					// where the original was located +left and +top equal to the size of pieces
+					.parent()
+						.addClass( "ui-effects-explode" )
+						.css( {
+							position: "absolute",
+							overflow: "hidden",
+							width: width,
+							height: height,
+							left: left + ( show ? mx * width : 0 ),
+							top: top + ( show ? my * height : 0 ),
+							opacity: show ? 0 : 1
+						} )
+						.animate( {
+							left: left + ( show ? 0 : mx * width ),
+							top: top + ( show ? 0 : my * height ),
+							opacity: show ? 1 : 0
+						}, options.duration || 500, options.easing, childComplete );
+			}
+		}
+
+		function animComplete() {
+			element.css( {
+				visibility: "visible"
+			} );
+			$( pieces ).remove();
+			done();
+		}
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Fade 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Fade Effect
+	//>>group: Effects
+	//>>description: Fades the element.
+	//>>docs: http://api.jqueryui.com/fade-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectFade = $.effects.define( "fade", "toggle", function( options, done ) {
+		var show = options.mode === "show";
+
+		$( this )
+			.css( "opacity", show ? 0 : 1 )
+			.animate( {
+				opacity: show ? 1 : 0
+			}, {
+				queue: false,
+				duration: options.duration,
+				easing: options.easing,
+				complete: done
+			} );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Fold 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Fold Effect
+	//>>group: Effects
+	//>>description: Folds an element first horizontally and then vertically.
+	//>>docs: http://api.jqueryui.com/fold-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectFold = $.effects.define( "fold", "hide", function( options, done ) {
+
+		// Create element
+		var element = $( this ),
+			mode = options.mode,
+			show = mode === "show",
+			hide = mode === "hide",
+			size = options.size || 15,
+			percent = /([0-9]+)%/.exec( size ),
+			horizFirst = !!options.horizFirst,
+			ref = horizFirst ? [ "right", "bottom" ] : [ "bottom", "right" ],
+			duration = options.duration / 2,
+
+			placeholder = $.effects.createPlaceholder( element ),
+
+			start = element.cssClip(),
+			animation1 = { clip: $.extend( {}, start ) },
+			animation2 = { clip: $.extend( {}, start ) },
+
+			distance = [ start[ ref[ 0 ] ], start[ ref[ 1 ] ] ],
+
+			queuelen = element.queue().length;
+
+		if ( percent ) {
+			size = parseInt( percent[ 1 ], 10 ) / 100 * distance[ hide ? 0 : 1 ];
+		}
+		animation1.clip[ ref[ 0 ] ] = size;
+		animation2.clip[ ref[ 0 ] ] = size;
+		animation2.clip[ ref[ 1 ] ] = 0;
+
+		if ( show ) {
+			element.cssClip( animation2.clip );
+			if ( placeholder ) {
+				placeholder.css( $.effects.clipToBox( animation2 ) );
+			}
+
+			animation2.clip = start;
+		}
+
+		// Animate
+		element
+			.queue( function( next ) {
+				if ( placeholder ) {
+					placeholder
+						.animate( $.effects.clipToBox( animation1 ), duration, options.easing )
+						.animate( $.effects.clipToBox( animation2 ), duration, options.easing );
+				}
+
+				next();
+			} )
+			.animate( animation1, duration, options.easing )
+			.animate( animation2, duration, options.easing )
+			.queue( done );
+
+		$.effects.unshift( element, queuelen, 4 );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Highlight 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Highlight Effect
+	//>>group: Effects
+	//>>description: Highlights the background of an element in a defined color for a custom duration.
+	//>>docs: http://api.jqueryui.com/highlight-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectHighlight = $.effects.define( "highlight", "show", function( options, done ) {
+		var element = $( this ),
+			animation = {
+				backgroundColor: element.css( "backgroundColor" )
+			};
+
+		if ( options.mode === "hide" ) {
+			animation.opacity = 0;
+		}
+
+		$.effects.saveStyle( element );
+
+		element
+			.css( {
+				backgroundImage: "none",
+				backgroundColor: options.color || "#ffff99"
+			} )
+			.animate( animation, {
+				queue: false,
+				duration: options.duration,
+				easing: options.easing,
+				complete: done
+			} );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Size 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Size Effect
+	//>>group: Effects
+	//>>description: Resize an element to a specified width and height.
+	//>>docs: http://api.jqueryui.com/size-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectSize = $.effects.define( "size", function( options, done ) {
+
+		// Create element
+		var baseline, factor, temp,
+			element = $( this ),
+
+			// Copy for children
+			cProps = [ "fontSize" ],
+			vProps = [ "borderTopWidth", "borderBottomWidth", "paddingTop", "paddingBottom" ],
+			hProps = [ "borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight" ],
+
+			// Set options
+			mode = options.mode,
+			restore = mode !== "effect",
+			scale = options.scale || "both",
+			origin = options.origin || [ "middle", "center" ],
+			position = element.css( "position" ),
+			pos = element.position(),
+			original = $.effects.scaledDimensions( element ),
+			from = options.from || original,
+			to = options.to || $.effects.scaledDimensions( element, 0 );
+
+		$.effects.createPlaceholder( element );
+
+		if ( mode === "show" ) {
+			temp = from;
+			from = to;
+			to = temp;
+		}
+
+		// Set scaling factor
+		factor = {
+			from: {
+				y: from.height / original.height,
+				x: from.width / original.width
+			},
+			to: {
+				y: to.height / original.height,
+				x: to.width / original.width
+			}
+		};
+
+		// Scale the css box
+		if ( scale === "box" || scale === "both" ) {
+
+			// Vertical props scaling
+			if ( factor.from.y !== factor.to.y ) {
+				from = $.effects.setTransition( element, vProps, factor.from.y, from );
+				to = $.effects.setTransition( element, vProps, factor.to.y, to );
+			}
+
+			// Horizontal props scaling
+			if ( factor.from.x !== factor.to.x ) {
+				from = $.effects.setTransition( element, hProps, factor.from.x, from );
+				to = $.effects.setTransition( element, hProps, factor.to.x, to );
+			}
+		}
+
+		// Scale the content
+		if ( scale === "content" || scale === "both" ) {
+
+			// Vertical props scaling
+			if ( factor.from.y !== factor.to.y ) {
+				from = $.effects.setTransition( element, cProps, factor.from.y, from );
+				to = $.effects.setTransition( element, cProps, factor.to.y, to );
+			}
+		}
+
+		// Adjust the position properties based on the provided origin points
+		if ( origin ) {
+			baseline = $.effects.getBaseline( origin, original );
+			from.top = ( original.outerHeight - from.outerHeight ) * baseline.y + pos.top;
+			from.left = ( original.outerWidth - from.outerWidth ) * baseline.x + pos.left;
+			to.top = ( original.outerHeight - to.outerHeight ) * baseline.y + pos.top;
+			to.left = ( original.outerWidth - to.outerWidth ) * baseline.x + pos.left;
+		}
+		element.css( from );
+
+		// Animate the children if desired
+		if ( scale === "content" || scale === "both" ) {
+
+			vProps = vProps.concat( [ "marginTop", "marginBottom" ] ).concat( cProps );
+			hProps = hProps.concat( [ "marginLeft", "marginRight" ] );
+
+			// Only animate children with width attributes specified
+			// TODO: is this right? should we include anything with css width specified as well
+			element.find( "*[width]" ).each( function() {
+				var child = $( this ),
+					childOriginal = $.effects.scaledDimensions( child ),
+					childFrom = {
+						height: childOriginal.height * factor.from.y,
+						width: childOriginal.width * factor.from.x,
+						outerHeight: childOriginal.outerHeight * factor.from.y,
+						outerWidth: childOriginal.outerWidth * factor.from.x
+					},
+					childTo = {
+						height: childOriginal.height * factor.to.y,
+						width: childOriginal.width * factor.to.x,
+						outerHeight: childOriginal.height * factor.to.y,
+						outerWidth: childOriginal.width * factor.to.x
+					};
+
+				// Vertical props scaling
+				if ( factor.from.y !== factor.to.y ) {
+					childFrom = $.effects.setTransition( child, vProps, factor.from.y, childFrom );
+					childTo = $.effects.setTransition( child, vProps, factor.to.y, childTo );
+				}
+
+				// Horizontal props scaling
+				if ( factor.from.x !== factor.to.x ) {
+					childFrom = $.effects.setTransition( child, hProps, factor.from.x, childFrom );
+					childTo = $.effects.setTransition( child, hProps, factor.to.x, childTo );
+				}
+
+				if ( restore ) {
+					$.effects.saveStyle( child );
+				}
+
+				// Animate children
+				child.css( childFrom );
+				child.animate( childTo, options.duration, options.easing, function() {
+
+					// Restore children
+					if ( restore ) {
+						$.effects.restoreStyle( child );
+					}
+				} );
+			} );
+		}
+
+		// Animate
+		element.animate( to, {
+			queue: false,
+			duration: options.duration,
+			easing: options.easing,
+			complete: function() {
+
+				var offset = element.offset();
+
+				if ( to.opacity === 0 ) {
+					element.css( "opacity", from.opacity );
+				}
+
+				if ( !restore ) {
+					element
+						.css( "position", position === "static" ? "relative" : position )
+						.offset( offset );
+
+					// Need to save style here so that automatic style restoration
+					// doesn't restore to the original styles from before the animation.
+					$.effects.saveStyle( element );
+				}
+
+				done();
+			}
+		} );
+
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Scale 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Scale Effect
+	//>>group: Effects
+	//>>description: Grows or shrinks an element and its content.
+	//>>docs: http://api.jqueryui.com/scale-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectScale = $.effects.define( "scale", function( options, done ) {
+
+		// Create element
+		var el = $( this ),
+			mode = options.mode,
+			percent = parseInt( options.percent, 10 ) ||
+				( parseInt( options.percent, 10 ) === 0 ? 0 : ( mode !== "effect" ? 0 : 100 ) ),
+
+			newOptions = $.extend( true, {
+				from: $.effects.scaledDimensions( el ),
+				to: $.effects.scaledDimensions( el, percent, options.direction || "both" ),
+				origin: options.origin || [ "middle", "center" ]
+			}, options );
+
+		// Fade option to support puff
+		if ( options.fade ) {
+			newOptions.from.opacity = 1;
+			newOptions.to.opacity = 0;
+		}
+
+		$.effects.effect.size.call( this, newOptions, done );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Puff 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Puff Effect
+	//>>group: Effects
+	//>>description: Creates a puff effect by scaling the element up and hiding it at the same time.
+	//>>docs: http://api.jqueryui.com/puff-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectPuff = $.effects.define( "puff", "hide", function( options, done ) {
+		var newOptions = $.extend( true, {}, options, {
+			fade: true,
+			percent: parseInt( options.percent, 10 ) || 150
+		} );
+
+		$.effects.effect.scale.call( this, newOptions, done );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Pulsate 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Pulsate Effect
+	//>>group: Effects
+	//>>description: Pulsates an element n times by changing the opacity to zero and back.
+	//>>docs: http://api.jqueryui.com/pulsate-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectPulsate = $.effects.define( "pulsate", "show", function( options, done ) {
+		var element = $( this ),
+			mode = options.mode,
+			show = mode === "show",
+			hide = mode === "hide",
+			showhide = show || hide,
+
+			// Showing or hiding leaves off the "last" animation
+			anims = ( ( options.times || 5 ) * 2 ) + ( showhide ? 1 : 0 ),
+			duration = options.duration / anims,
+			animateTo = 0,
+			i = 1,
+			queuelen = element.queue().length;
+
+		if ( show || !element.is( ":visible" ) ) {
+			element.css( "opacity", 0 ).show();
+			animateTo = 1;
+		}
+
+		// Anims - 1 opacity "toggles"
+		for ( ; i < anims; i++ ) {
+			element.animate( { opacity: animateTo }, duration, options.easing );
+			animateTo = 1 - animateTo;
+		}
+
+		element.animate( { opacity: animateTo }, duration, options.easing );
+
+		element.queue( done );
+
+		$.effects.unshift( element, queuelen, anims + 1 );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Shake 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Shake Effect
+	//>>group: Effects
+	//>>description: Shakes an element horizontally or vertically n times.
+	//>>docs: http://api.jqueryui.com/shake-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectShake = $.effects.define( "shake", function( options, done ) {
+
+		var i = 1,
+			element = $( this ),
+			direction = options.direction || "left",
+			distance = options.distance || 20,
+			times = options.times || 3,
+			anims = times * 2 + 1,
+			speed = Math.round( options.duration / anims ),
+			ref = ( direction === "up" || direction === "down" ) ? "top" : "left",
+			positiveMotion = ( direction === "up" || direction === "left" ),
+			animation = {},
+			animation1 = {},
+			animation2 = {},
+
+			queuelen = element.queue().length;
+
+		$.effects.createPlaceholder( element );
+
+		// Animation
+		animation[ ref ] = ( positiveMotion ? "-=" : "+=" ) + distance;
+		animation1[ ref ] = ( positiveMotion ? "+=" : "-=" ) + distance * 2;
+		animation2[ ref ] = ( positiveMotion ? "-=" : "+=" ) + distance * 2;
+
+		// Animate
+		element.animate( animation, speed, options.easing );
+
+		// Shakes
+		for ( ; i < times; i++ ) {
+			element
+				.animate( animation1, speed, options.easing )
+				.animate( animation2, speed, options.easing );
+		}
+
+		element
+			.animate( animation1, speed, options.easing )
+			.animate( animation, speed / 2, options.easing )
+			.queue( done );
+
+		$.effects.unshift( element, queuelen, anims + 1 );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Slide 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Slide Effect
+	//>>group: Effects
+	//>>description: Slides an element in and out of the viewport.
+	//>>docs: http://api.jqueryui.com/slide-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effectsEffectSlide = $.effects.define( "slide", "show", function( options, done ) {
+		var startClip, startRef,
+			element = $( this ),
+			map = {
+				up: [ "bottom", "top" ],
+				down: [ "top", "bottom" ],
+				left: [ "right", "left" ],
+				right: [ "left", "right" ]
+			},
+			mode = options.mode,
+			direction = options.direction || "left",
+			ref = ( direction === "up" || direction === "down" ) ? "top" : "left",
+			positiveMotion = ( direction === "up" || direction === "left" ),
+			distance = options.distance ||
+				element[ ref === "top" ? "outerHeight" : "outerWidth" ]( true ),
+			animation = {};
+
+		$.effects.createPlaceholder( element );
+
+		startClip = element.cssClip();
+		startRef = element.position()[ ref ];
+
+		// Define hide animation
+		animation[ ref ] = ( positiveMotion ? -1 : 1 ) * distance + startRef;
+		animation.clip = element.cssClip();
+		animation.clip[ map[ direction ][ 1 ] ] = animation.clip[ map[ direction ][ 0 ] ];
+
+		// Reverse the animation if we're showing
+		if ( mode === "show" ) {
+			element.cssClip( animation.clip );
+			element.css( ref, animation[ ref ] );
+			animation.clip = startClip;
+			animation[ ref ] = startRef;
+		}
+
+		// Actually animate
+		element.animate( animation, {
+			queue: false,
+			duration: options.duration,
+			easing: options.easing,
+			complete: done
+		} );
+	} );
+
+
+	/*!
+	 * jQuery UI Effects Transfer 1.12.1
+	 * http://jqueryui.com
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license.
+	 * http://jquery.org/license
+	 */
+
+	//>>label: Transfer Effect
+	//>>group: Effects
+	//>>description: Displays a transfer effect from one element to another.
+	//>>docs: http://api.jqueryui.com/transfer-effect/
+	//>>demos: http://jqueryui.com/effect/
+
+
+
+	var effect;
+	if ( $.uiBackCompat !== false ) {
+		effect = $.effects.define( "transfer", function( options, done ) {
+			$( this ).transfer( options, done );
+		} );
+	}
+	var effectsEffectTransfer = effect;
+
+
 }),
 // === End jQueryUI ===
 
